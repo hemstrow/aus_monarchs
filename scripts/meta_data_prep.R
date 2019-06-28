@@ -73,4 +73,4 @@ sample.meta$year[which(is.na(sample.meta$year))] <-
 sample.meta <- sample.meta[,c(1, 2, 3, 5, 29:33)]
 
 # save
-write.table(sample.meta, "sample_metadata.txt", sep = "\t", quote = F, col.names = T)
+write.table(sample.meta, "data/sample_metadata.txt", sep = "\t", quote = F, col.names = T)
