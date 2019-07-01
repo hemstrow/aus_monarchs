@@ -1,20 +1,20 @@
 library(readr)
 
 # import data
-barcodes <- read_delim("../data/sample_IDs_barcodes.txt", "\t", escape_double = FALSE, trim_ws = TRUE)
-meta18 <- read_delim("../data/2018_mon_meta.txt", "\t", escape_double = FALSE, trim_ws = TRUE)
-meta17 <- read_delim("../data/2017_mon_meta.txt", "\t", escape_double = FALSE, trim_ws = TRUE)
-bamlist <- read.table("../data/gbamlist.txt", stringsAsFactors = F)
+barcodes <- read_delim("data/sample_IDs_barcodes.txt", "\t", escape_double = FALSE, trim_ws = TRUE)
+meta18 <- read_delim("data/2018_mon_meta.txt", "\t", escape_double = FALSE, trim_ws = TRUE)
+meta16 <- read_delim("data/2016_mon_meta.txt", "\t", escape_double = FALSE, trim_ws = TRUE)
+bamlist <- read.table("data/gbamlist.txt", stringsAsFactors = F)
 
 # condense phenotype calls
 # strict: yolked at all means resident
 # relaxed: only chorionated are resident
 # likely: best guess
 # quantitative: 0 if no yolk, 1 if yolk, 2 if chorionated
-meta17$strict_pheno <- ifelse(meta17$Yolked_Oocytes == 0, "M", "R")
-meta17$likely_pheno <- meta17$strict_pheno
-meta17$relaxed_pheno <- ifelse(meta17$Mature_Oocytes == 0, "M", "R")
-meta17$quant_pheno <- ifelse(meta17$Mature_Oocytes != 0, 2, ifelse(meta17$Yolked_Oocytes != 0, 1, 0))
+meta16$strict_pheno <- ifelse(meta16$Yolked_Oocytes == 0, "M", "R")
+meta16$likely_pheno <- meta16$strict_pheno
+meta16$relaxed_pheno <- ifelse(meta16$Mature_Oocytes == 0, "M", "R")
+meta16$quant_pheno <- ifelse(meta16$Mature_Oocytes != 0, 2, ifelse(meta16$Yolked_Oocytes != 0, 1, 0))
 
 strict_migrant_phenos <- c("I", "Y(barely)", "Y(b)", "N")
 relaxed_migrant_phenos <- c("I", "Y(barely)", "Y(b)", "Y", "Y(s)", "Y(m)", "Y(slightly)", "N")
@@ -31,7 +31,7 @@ meta18$reject[meta18$Phenotype == "N"] <- 1
 meta18$reject[meta18$ID == "FIT?"] <- 1
 
 # add year notes
-meta17$year <- "2017"
+meta16$year <- "2016"
 meta18$year <- "2018"
 
 # pull out barcode and plate from bamlist
@@ -45,7 +45,7 @@ barcodes$Plate <- tolower(barcodes$Plate)
 sample.meta <- merge(bamtable, barcodes, by = c("Plate", "Index"), sort = F, all.x = T)
 sample.meta <- merge(sample.meta, meta18, by.x = "SampleID", by.y = "ID", sort = F, all.x = T)
 sample.meta <- sample.meta[-which(duplicated(sample.meta$ord)),] # due to the fact that I had two vials with the same ID. They have different dates and unique metadata, so it's not a huge deal. Just screws up the merge.
-sample.meta <- merge(sample.meta, meta17, by.x = "SampleID", by.y = "ID", sort = F, all.x = T)
+sample.meta <- merge(sample.meta, meta16, by.x = "SampleID", by.y = "ID", sort = F, all.x = T)
 sample.meta <- sample.meta[order(sample.meta$ord),]
 
 # fix pheno columns
@@ -74,3 +74,5 @@ sample.meta <- sample.meta[,c(1, 2, 3, 5, 29:33)]
 
 # save
 write.table(sample.meta, "data/sample_metadata.txt", sep = "\t", quote = F, col.names = T)
+
+
