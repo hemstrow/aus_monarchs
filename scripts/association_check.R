@@ -18,11 +18,11 @@ dat <- calc_association(dat, response = "likely_pheno", maxiter = 1000)
 dat <- calc_association(dat, response = "likely_pheno", method = "armitage")
 
 # plot
-p <- plot_manhattan(dat, "gmmat_pval", chr = "scaffold", significant = 0.00001, suggestive = 0.0001, log.p = T)
+p <- plot_manhattan(dat, "gmmat_pval_likely_pheno", chr = "scaffold", significant = 0.00001, suggestive = 0.0001, log.p = T)
 p2 <- plot_manhattan(dat, "p_armitage_likely_pheno", chr = "scaffold", significant = 0.00001, suggestive = 0.0001, log.p = T)
 
 #qq plots
-qq(get.snpR.stats(x)$gmmat_pval)
+qq(get.snpR.stats(x)$gmmat_pval_likely_pheno)
 qq(get.snpR.stats(x)$p_armitage_likely_pheno)
 
 
@@ -39,3 +39,17 @@ plot_manhattan(adat, "pval", chr = "Chromosome", bp = "Position", log.p = T, sig
 gp <- run_genomic_prediction(dat, "likely_pheno", iterations = 10000, burn_in = 1000, thin = 100)
 cvgp <- cross_validate_genomic_prediction(dat, "likely_pheno")
 ggplot(gp$predictions, aes(x = phenotype, y = predicted_BV)) + geom_point() + theme_bw()
+
+gp.effects <- cbind(dat@snp.meta, effect = gp$model$ETA[[1]]$b)
+gp.effects$effect <- abs(gp.effects$effect)
+stats <- get.snpR.stats(dat)
+stats <- dplyr::arrange(stats, gmmat_pval_likely_pheno)
+hsnps <- head(stats$.snp.id, 10)
+hsnps <- which(gp.effects$.snp.id %in% hsnps)
+plot_manhattan(gp.effects, "effect", chr = "scaffold", highlight = hsnps)
+
+
+# rf
+rf <- run_random_forest(dat, response = "likely_pheno", num.trees = 500000, par = 10) # probably want to try with higher mtry, and could purge out very unimportant markers as well.
+p <- plot_manhattan(rf$data, "likely_pheno_RF_importance", chr = "scaffold", abs = T, significant = 0.02)
+# note, the gene on scaff 64 (DPOGS208560) has a hit to a silkworm gene that seems to be related to molt-intermolt transition.
