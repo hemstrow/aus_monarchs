@@ -1,5 +1,5 @@
 # function to run:
-refine_rf <- function(rf, response, num.trees, trim_cuttoffs = NULL, trim = 0.5, seach_cuttoff = NULL, par = FALSE, ...){
+refine_rf <- function(rf, response, num.trees, trim_cuttoffs = NULL, trim = 0.5, search_cuttoff = NULL, par = FALSE, ...){
   #=============subfunctions:=========
   # trim snps below a given importance quantile
   remove_trim <- function(imps, trim){
