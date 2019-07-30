@@ -12,7 +12,7 @@ outfile <- as.character(args[2])
 
 # read in data
 sample.meta <- read.table("~/monarch/aus_monarchs/aus_monarchs/data/sample_metadata.txt", header = T, stringsAsFactors = F)
-genos <- read.table("~/monarch/aus_monarchs/aus_monarchs/data/sample_metadata.txt", stringsAsFactors = F)
+genos <- read.table("~/monarch/aus_monarchs/aus_monarchs/data/genotypes.geno", stringsAsFactors = F)
 snp.meta <- genos[,1:2]
 colnames(snp.meta) <- c("scaffold", "position")
 dat <- import.snpR.data(genos[,-c(1:2)], snp.meta, sample.meta)
