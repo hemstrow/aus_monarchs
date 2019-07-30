@@ -1,14 +1,15 @@
 # define paths, library snpR
 .libPaths(c(.libPaths(), "/home/hemstrow/R/x86_64-pc-linux-gnu-library/3.6", "/usr/local/lib/R/site-library", "/usr/lib/R/site-library", "/usr/lib/R/library", "/share/apps/rmodules"))
-library(snpR);
+library(snpR); library(ranger);
 
+args <- commandArgs(TRUE)
 run <- as.character(args[1])
 outfile <- as.character(args[2])
-cross_sample <- as.character(args[3])
+cross_sample <- as.numeric(as.character(args[3]))
 
 # prep data
-sample.meta <- read.table("data/sample_metadata.txt", header = T, stringsAsFactors = F)
-genos <- read.table("data/genotypes.geno", stringsAsFactors = F)
+sample.meta <- read.table("~/monarch/aus_monarchs/aus_monarchs/data/sample_metadata.txt", header = T, stringsAsFactors = F)
+genos <- read.table("~/monarch/aus_monarchs/aus_monarchs/data/genotypes.geno", stringsAsFactors = F)
 snp.meta <- genos[,1:2]
 colnames(snp.meta) <- c("scaffold", "position")
 dat <- import.snpR.data(genos[,-c(1:2)], snp.meta, sample.meta)
