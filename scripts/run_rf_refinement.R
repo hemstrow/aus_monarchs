@@ -1,3 +1,12 @@
+# run parameters
+trim <- .9
+response <- "likely_pheno"
+mtry.scale <- 1 # initial mtry
+num.trees <- 50000 # number of trees
+par <- F
+
+
+
 # define paths, library snpR
 .libPaths(c(.libPaths(), "/home/hemstrow/R/x86_64-pc-linux-gnu-library/3.6", "/usr/local/lib/R/site-library", "/usr/lib/R/site-library", "/usr/lib/R/library", "/share/apps/rmodules"))
 library(snpR); library(ranger);
@@ -20,42 +29,33 @@ dat <- filter_snps(dat, maf = 0.05, hf_hets = 0.55, min_ind = 0.5, min_loci = 0.
 ## remove the cross sample
 rdat <- subset_snpR_data(dat, samps = (1:ncol(dat))[-cross_sample])
 
-# run parameters
-trim_cuttoffs <- c(1000, 200) # above the first level, will trim at the first percentage, below the last, will trim a single at a time
-trim <- c(.9, .1) # trim at .9 before 1000 SNPs, at .1 before 200, and one per run below this.
-response <- "likely_pheno"
-num.trees <- 50000 # number of trees
-init.mtry <- nrow(dat) # initial mtry
-init.num.trees <- 50000 # number of trees in initial run. Probably doesn't need to be huge!
-par <- 11
 
 # run the first random forest
-rf <- run_random_forest(rdat, response = "likely_pheno", mtry = init.mtry, num.trees = init.num.trees)
+rf <- run_random_forest(rdat, response = "likely_pheno", mtry = nrow(rdat)*mtry.scale, num.trees = num.trees)
+
+
+
 
 # run the refinement
-refined_model <- refine_rf(rf = rf, 
-                           response = response, 
-                           trim_cuttoffs = trim_cuttoffs, 
-                           num.trees = num.trees,
-                           trim = trim,
-                           par = par)
+best.imp <- quantile(abs(rf$models$.base_.base$model$variable.importance), trim)
+best.imp <- which(rf$models$.base_.base$model$variable.importance >= best.imp[1])
+rdat <- subset_snpR_data(rdat, best.imp)
+rf <- run_random_forest(rdat, response = response, mtry = nrow(rdat)*mtry.scale, num.trees = num.trees, 
+                        par = par, importance = "permutation", pvals = F)
 
-# save outputs
-error.delta <- refined_model$error_delta
-error.delta <- cbind(run = run, error.delta)
-write.table(error.delta, paste0(outfile, "_delta_", run, ".txt"), quote = F, row.names = F, col.names = F)
-saveRDS(refined_model, paste0(outfile, "_model_", run, ".RDS"))
+
+
+saveRDS(rf, paste0(outfile, "_model_", run, ".RDS"))
 
 # prediction, need to re-run the model since the impurity_corrected importance can apparently cause issues. Run with permutation.
-kept.snps <- refined_model$best_model$data@snp.meta$.snp.id
+kept.snps <- rf$data@snp.meta$.snp.id
 kept.snps <- match(kept.snps, dat@snp.meta$.snp.id)
 
-predict.rf <- run_random_forest(refined_model$best_model$data, response = response, mtry = nrow(refined_model$best_model$data), num.trees = num.trees, importance = "permutation", pvals = F)
 sn <- format_snps(dat, "sn")
 sn <- sn[,-c(1:3)]
 sn <- sn[kept.snps, cross_sample]
 sn <- as.data.frame(t(sn))
-colnames(sn) <- refined_model$best_model$models$.base_.base$model$forest$independent.variable.names
+colnames(sn) <- rf$models$.base_.base$model$forest$independent.variable.names
 out <- predict(predict.rf$models$.base_.base$model, sn)
 
 write.table(data.frame(sample = cross_sample, phenotype = dat@sample.meta[cross_sample,response], prediction = out$predictions),
