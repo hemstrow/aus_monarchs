@@ -1,9 +1,9 @@
 # this will create a file containing the primer target regions for primer3 SEQUEaCE_PRIMER_PAIR_OK_REGIOa_LIST argument.
-e <- 7870000 # end of target region
-s <- 7830000 # start of target region
+e <- 7881485 # end of target region
+s <- 7820867 # start of target region
 o <- 500 # margin in which primers can be found
-overlap <- 250 # distance by which reads must overlap
-sep <- 7000 # distance between each binding region, max allowable length of reads.
+overlap <- 500 # distance by which reads must overlap
+sep <- 10000 # distance between each binding region, max allowable length of reads.
 outfile <- "primer_regions.txt" # name of outfile
 
 
@@ -62,7 +62,6 @@ st[a] <- st[a - 1] + x - u
 en[a] <- (L + o*2) - o
 out[a] <- paste0(c(st[a], o, en[a], o), collapse = ",")
 
-out <- paste0(out, collapse = ";")
 writeLines(out, outfile)
 
 

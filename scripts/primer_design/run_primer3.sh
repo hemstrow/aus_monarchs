@@ -11,5 +11,5 @@ Rscript get_primer_intervals.R
 
 Rscript prepare_primer3_parms.R $parms primer_regions.txt $fasta $outfile
 
-primer3_core --format_output --strict_tags --output=${oufile}_primer3_summary.txt < parms_${oufile}
+primer3_core --format_output --strict_tags --output=${outfile}_primer3_summary.txt < parms_${outfile}
 
