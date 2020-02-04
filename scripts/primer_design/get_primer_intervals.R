@@ -2,7 +2,7 @@
 e <- 7881485 # end of target region
 s <- 7820867 # start of target region
 o <- 500 # margin in which primers can be found
-overlap <- 500 # distance by which reads must overlap
+overlap <- 1500 # distance by which reads must overlap
 sep <- 10000 # distance between each binding region, max allowable length of reads.
 outfile <- "primer_regions.txt" # name of outfile
 
