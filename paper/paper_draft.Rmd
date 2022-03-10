@@ -1,0 +1,63 @@
+---
+title: "Genetic Determinants of Migratory Behaviours in Australian Monarch Butterflies"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  word_document:
+    reference_docx: "paper-files/style_ref.docx"
+  pdf_document:
+    keep_tex: true
+    fig_caption: true
+    latex_engine: pdflatex
+    fig_width: 7
+    fig_height: 6
+bibliography: "paper-files/citations.bib"
+csl: "paper-files/council-of-science-editors-author-date.csl"
+header-includes:
+  - \usepackage[left]{lineno}
+  - \linenumbers
+  - \usepackage{setspace}\doublespacing
+  - \usepackage{sectsty}\sectionfont{\fontsize{12}{12}\selectfont}
+  - \usepackage{sectsty}\subsectionfont{\normalfont\itshape\fontsize{12}{12}\selectfont}
+  - \usepackage[round]{natbib}
+indent: true
+sansfont: Times New Roman
+fontsize: 12pt
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(snpR); library(data.table)
+```
+
+
+# Introduction
+# Methods
+## Sample Collection, Incubation, and Phenotyping
+```{r, read_sample_meta_get_numbers, echo=FALSE,message=FALSE,include=FALSE,warning=FALSE}
+sample.meta <- read.table("../data/sample_metadata.txt", header = T, stringsAsFactors = F)
+old.data <- data.table::fread("../data/Aus_2018_metadata.txt", header = T)
+old.data[,fam := as.numeric(gsub("_.+", "", ID))]
+
+meta.micah <- data.table::fread("../data/2016_mon_meta.txt", header = TRUE)
+```
+
+We collected 22 female monarch butterflies from Pinjarra Hills, Queensland, Australia (27°32′26.7″S, 152°54′22.7″E) between the 5th and 9th of July 2018. We noted individuals in all life stages present at the field site during our sample collections. We then enclosed these individuals on their host plants and collected the eggs produced by 21 of them. These eggs represent 21 total material families, but, since females may mate multiple times and lay clutches with mixed parentage [CITE], each of these families may consist of multiple groups of half-siblings. We did not remove *Ophryocystis elektroscirrha* (a protozoan parasite) spores, which were uniformly present on our eggs [consistent with previous reports from this location, see @Freedman2018].
+
+<!-- add citation -->
+
+We then incubated all of the eggs using the same incubators and following the "decreasing photoperiod" experimental scheme of Freedman et al. [-@Freedman2018] in order to induce reproductive diapause and ensure that our data could be later pooled with that produced in the earlier study. We released all male butterflies following emergence, since phenotyping diapause in male monarchs can be challenging due to the difficulty in extracting and weighing the seminal vessicle, which is likely the best indicator of male reproductive development [@Freedman2018]. This left us with a total of `r nrow(old.data)` female individuals from `r length(unique(na.omit(old.data$fam)))` maternal families.
+
+We then assessed reproductive diapause by assessing the degree of oocyte development in each of our adult female butterflies. We observed that individuals fell into two clearly defined bins: `r sum(old.data$Phenotype == "C", na.rm = TRUE)` out of `r nrow(old.data)` had fully developed, chorionated eggs (visible ridges along the exterior of the egg), `r sum(old.data$Phenotype != "C", na.rm = TRUE)` females did not. Of these latter individuals a few (`r sum(old.data$Phenotype == "I", na.rm = TRUE) + sum(old.data$Phenotype == "N", na.rm = TRUE)`) had no yolk in their eggs whatsoever, but most had some degree of yolking. Since vitellogenesis generally only begins to a substantial degree after eclosion in monarchs [@Pan1976], We called any individuals with more than a small amount of yolking in their eggs as reproductively mature (N = `r sum(sample.meta$likely_pheno[sample.meta$year == 2018] == "M", na.rm = TRUE)` and `r sum(sample.meta$likely_pheno[sample.meta$year == 2018] == "R", na.rm = TRUE)` for reproductively immature and mature individuals, respectively, see Supplementary Information for images of egg development in each individual). Wings and bodies from all individuals were preserved in dry coin envelops or tubes, respectively.
+
+We supplemented these samples with preserved, dry butterfly wings from each of the "decreasing photoperiod" female individuals previously phenotyped for reproductive development by Freedman et al. [-@Freedman2018], constituting an additional `r sum(sample.meta$year == 2016)` total female butterflies from `r length(unique(meta.micah$Female_Line[meta.micah$Treatment == "Decreasing"]))` maternal families, of which `r sum(sample.meta[sample.meta$year == 2016,]$likely_pheno == "M", na.rm = TRUE)` and `r sum(sample.meta[sample.meta$year == 2016,]$likely_pheno == "R", na.rm = TRUE)` were phenotyped by the authors as reproductively immature and mature, respectively.
+
+## Sequencing and Genotyping
+
+
+## Statistical Analysis
+# Results
+# Discussion
+# Conclusion
+# Acknowledgments
+# Tables and Figures
+# References
