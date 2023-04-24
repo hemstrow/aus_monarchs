@@ -11,7 +11,7 @@ output:
     fig_width: 7
     fig_height: 6
 bibliography: "paper-files/citations.bib"
-csl: "paper-files/council-of-science-editors-author-date.csl"
+bst: "paper-files/pnas-new.bst"
 header-includes:
   - \usepackage[left]{lineno}
   - \linenumbers
@@ -27,7 +27,7 @@ always_allow_html: true
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
-library(snpR); library(data.table); library(ggplot2); library(gridExtra); library(dplyr); library(openxlsx); library(imager); library(nlme)
+library(snpR); library(data.table); library(ggplot2); library(gridExtra); library(dplyr); library(openxlsx); library(jpeg); library(nlme)
 
 ```
 
@@ -55,13 +55,14 @@ Diapause control is also an phenotype of interest because it highlights a theore
 
 The variance in diapause induction in Queensland monarchs allows for a direct search for genetic associations with this trait and thus for an examination of the genetic underpinnings of the re-evolution of migration in Australian monarchs. *Here, we used reduced representation sequencing to search for genes associated with migratory diapause in Queensland monarch butterflies. We found one strongly associated locus co-located with an E3 ubiquitin ligase gene. This gene has been previously identified as associated with intermolt transitions in silk moths (Bombyx mori), which is controlled by the same major hormone (juvenile hormone, hereafter JH) as reproductive diapause.* This gene had not previously been identified as associated with migration in North American monarch butterflies, and we did not find that any previously identified migratory genes were associated with diapause in our study. 
 
-# Methods
+# Results
+
 ## Background
 Although the ancestral range of monarch butterflies is believed to be in North and Central America, they have fairly recently expanded into South America and the Caribbean, and very recently to several locations throughout the Atlantic and Pacific [@oplerFieldGuideWestern1999; @Zhan2014]. In North America, the species is well known for its unique, multi-generational migratory life history wherein individuals dispersing northward in the spring do so over three to four generations and then return to their wintering grounds in a single step [@malcolmSpringRecolonizationEastern1993; @cockrellTimeTemperatureLatitudinal1993].
 
 In Southern Florida, the Caribbean, Central America, South America, and throughout most of their introduced range monarchs are non-migratory [@dockxDirectionalStabilizingSelection2007;@altizerPopulationsMonarchButterflies2010;@northMonarchButterflyBiology2004]. Residency in these populations appears to be a derived trait which has arisen multiple times after the species' split from *Danaus erripus*, their closest extant relative [@Zhan2014]. The Pacific expansion of monarchs is relatively recent, with historical records indicating that they established first in Hawaii in the 1840s, likely as a result of individuals blown in during storm events that were able to survive on recently introduced milkweeds [@Zalucki2004; @Pierce2014]. Genetic evidence is consistent with an introduction to Hawaii during this time period [@Hemstrom2022a]. As described above, they then spread across the Pacific and reached Australia in approximately 1871 [@Zalucki2004], and were recorded migrating again in Australia sometime in the 1930s [see Figure 1, @James2019].
 
-## Sample Collection, Incubation, and Phenotyping
+<!-- chunks located here to ensure everything calls correctly -->
 ```{r, read_sample_meta_get_numbers, echo=FALSE,message=FALSE,include=FALSE,warning=FALSE}
 sample.meta <- read.table("../data/sample_metadata.txt", header = T, stringsAsFactors = F)
 old.data <- data.table::fread("../data/Aus_2018_metadata.txt", header = T)
@@ -69,24 +70,6 @@ old.data[,fam := as.numeric(gsub("_.+", "", ID))]
 
 meta.micah <- data.table::fread("../data/2016_mon_meta.txt", header = TRUE)
 ```
-
-We collected 22 female monarch butterflies from Pinjarra Hills, Queensland, Australia (27°32′26.7″S, 152°54′22.7″E) between the 5th and 9th of July 2018. Individuals in all life stages were present at the field site during our sample collections, consistent with continuous, year-round breeding. We enclosed each of these 22 females individually on either *Asclepias curassavica*  or *Gomphocarpus sp.* host plants found on-location and subsequently successfully collected eggs produced by 21 of them. While these eggs represent 21 total maternal families, each may consist of multiple groups of half-siblings since females may mate multiple times and lay clutches with mixed parentage. We did not remove *Ophryocystis elektroscirrha* (a protozoan parasite) spores, which were uniformly present on our eggs [consistent with previous reports from this location, see @Freedman2018].
-
-We then incubated all eggs using the same incubators and following the "decreasing photoperiod" experimental scheme of Freedman et al. [-@Freedman2018] in order to induce reproductive diapause and ensure that our data could be later pooled with that produced in the earlier study. Briefly, larvae were reared at a constant temperature of 28°C under a photoperiod regime that declined from 14:10 L:D to 12:12 L:D over the course of 30 days (Δ4 mins/day). We released all male butterflies following emergence, since phenotyping diapause in male monarchs can be challenging due to the difficulty in extracting and weighing the ejaculatory duct, seminal vesicle, and accessory glands, which are likely the best indicator of male reproductive development [@Goehring2002]. This left us with a total of `r nrow(old.data)` females from `r length(unique(na.omit(old.data$fam)))` maternal families.
-
-We assessed reproductive diapause by determining the degree of oocyte development in each of our adult female butterflies. We observed that individuals fell into two clearly defined bins: `r sum(old.data$Phenotype == "C", na.rm = TRUE)` out of `r nrow(old.data)` had fully developed, chorionated eggs (visible ridges along the exterior of the egg), while `r sum(old.data$Phenotype != "C", na.rm = TRUE)` females did not. Of these latter individuals, a few (`r sum(old.data$Phenotype == "I", na.rm = TRUE) + sum(old.data$Phenotype == "N", na.rm = TRUE)`) had no yolk in their eggs whatsoever, but most had some degree of yolking. Since vitellogenesis generally only begins to a substantial degree after eclosion in monarchs [@Pan1976], we called any individuals with more than a small amount of yolking in their eggs as reproductively mature (N = `r sum(sample.meta$likely_pheno[sample.meta$year == 2018] == "M", na.rm = TRUE)` and `r sum(sample.meta$likely_pheno[sample.meta$year == 2018] == "R", na.rm = TRUE)` for reproductively immature and mature individuals, respectively, images of egg development in each individual are available from the authors upon request). Wings and bodies from all individuals were preserved in dry coin envelops or 95% ethanol, respectively. We note that while we refer to the postponement of reproductive development under otherwise suitable conditions as diapause, other authors refer to this process in monarchs as oligopause [@jamesOvarianDormancyDanaus1982] or quiescence, since diapause implies an extended refractory period.
-
-We supplemented these samples with preserved, dry butterfly wings from each of the "decreasing photoperiod" female individuals previously scored for reproductive development by Freedman et al. [-@Freedman2018], constituting an additional `r sum(sample.meta$year == 2016, na.rm = TRUE)` total female butterflies from `r length(unique(meta.micah$Female_Line[meta.micah$Treatment == "Decreasing"]))` maternal families, of which `r sum(sample.meta[sample.meta$year == 2016,]$likely_pheno == "M", na.rm = TRUE)` and `r sum(sample.meta[sample.meta$year == 2016,]$likely_pheno == "R", na.rm = TRUE)` were scored by the authors as reproductively immature and mature, respectively. Together, these two datasets contained `r length(na.omit(sample.meta$likely_pheno))` monarch butterflies, of which `r sum(sample.meta$likely_pheno == "M", na.rm = TRUE)` and `r sum(sample.meta$likely_pheno == "R", na.rm = TRUE)` were reproductively immature and mature, respectively (see Table 1).
-
-
-## Sequencing and Genotyping
-We removed and extracted DNA from one leg from each of our samples collected in 2018 or from a wing base from each of the samples collected by Freedman et al [-@Freedman2018] using the magnetic bead protocol of Ali et al [-@Ali389]. We quantified the resulting DNA on a BioTek Instruments FLx800 Fluorescence Reader using Thermo Fisher Scientific Quant-iT PicoGreen dsDNA Reagent, then prepared Restriction Associated Digest (RAD) libraries using the Pst1 restriction enzyme according to Ali et al [-@Ali389]. We sequenced these 150 bp paired-end sequencing libraries using an Illumina Hi-Seq 4000.
-
-We aligned the resulting raw sequence data to the v4 monarch butterfly genome assembly [@Gu2019] using the mem algorithm of the Burrows-Wheeler Aligner [@Li2009a]. We then filtered out PCR duplicates, improperly paired, or poorly mapped reads using SAMtools [@Li2009]. We then called gentoypes using the ANGSD software package with the following parameters: -doMajorMinor 1 (determine major and minor alleles using a genotype likelihood approach),  -doMaf 2 (determine minor allele frequencies), -SNP_pval 1e-8 (keep only loci with a SNP p-value $\le 1 \times 10^{-8}$), -doGeno 4 (call genotypes), -doPost 2 (calculate genotype posterior probabilities using a uniform prior), -postCutoff 0.95 (keep only loci where the highest genotype posterior probability $\ge 0.95$), -minQ 20 (keep only loci with a sequencing quality $\ge 20$), -minMapQ 20 (keep only loci with a mapping quality $\ge 20$), -minInd 130 (keep only loci sequenced in at least 130 individuals), and -minMaf 0.05 (keep only loci with a minor allele frequency $\ge 0.05$). 
-
-<!-- we removed poorly seqeuenced individuals later in the pipeline, so these numbers are actually the final numbers. Not sure if that matters, but can fix. -->
-
-## Statistical Analysis
 
 ```{r import_and_diversity, echo=FALSE, message=FALSE, warning=FALSE,include=FALSE}
 L <- 6578062 # total number of sequenced bases
@@ -138,10 +121,6 @@ pca <- plot_clusters(dat, c("year.MotherID")) # color by mother and by year
 
 ```
 
-
-
-In order to determine if any genomic regions were significantly associated with reproductive diapause, we used the snpR R package to filter out loci significantly out of Hardy-Weinburg Equilibrium ($p \le 0.000001$) in either year in order to help remove any paralogous loci and interpolated missing data by conducting binomial draws at missing genotypes using the minor allele frequencies at those loci [@hemstromSnpRUserFriendly2022]. To assess the basic level of genetic diversity amongst our samples, we then calculated the average number of pairwise differences ($\pi$), observed heterozygosity ($H_{O}$), and $F_{IS}$ according to Weir and Cockerham [-@Weir1984] for all of our samples and for each year independently using snpR [@hemstromSnpRUserFriendly2022]. We also calculated $F_{ST}$ according to Weir and Cockerham [-@Weir1984] between sample years and between both sample year and reproductive phenotype jointly [@hemstromSnpRUserFriendly2022]. We bootstrapped a significance level for $F_{ST}$ by bootstrapping individuals among populations with replacement 100 times. To determine if there was any substantial unexpected genetic structuring (other than family groups) in our samples, we conducted a Principal Component Analysis using snpR [@hemstromSnpRUserFriendly2022]. Since some individuals escaped their rearing dishes (but not the incubator) during rearing, we also confirmed the parentage of our samples using the Colony2 program, assuming polygamous, random mating [@Jones2010].
-
 ```{r association, echo=FALSE, warning=FALSE, message=FALSE}
 # family bias
 bias <- sample.meta[,c("MotherID", "likely_pheno")]
@@ -176,21 +155,17 @@ Figure3b <- plot_manhattan(dat, "gmmat_pval_likely_pheno", chr = "scaffold", sig
                            chr_order = c(paste0("chr", 1:30), "other"), highlight_style = "red") # highlight top snp
 Figure3b <- Figure3b$plot + ylab("-log10(p-value)") + xlab("Position") + theme(strip.text = element_blank())
 ```
-In order to determine the degree to which diapause status was biased between families, we constructed a Fisher's exact test for independence using 2000 simulations in R version 4.2.2 [@rcoreteamLanguageEnvironmentStatistical2022]. We then conducted a Genome-Wide Association Study (GWAS) in order to determine if any loci were significantly associated with reproductive status. Since our samples were composed of many groups of full and half-siblings and came from two genetically different years, we used the GMMAT R package to conduct a population and family structure-corrected GWAS [@Chen2020; @Chen2016]. We visualized the results by constructing a Manhattan plot using snpR [@hemstromSnpRUserFriendly2022]. We identified the genes underlying any candidate regions by hand using the MonarchBase genome browser online tool [@Zhan2013].
 
 ```{r re_analyze, include=FALSE}
 old_phenotypic <- read.xlsx("../data/monarch_development.xlsx")
 
 mod_AsRa <- lme(Aspect_Ratio ~ Yolked_Oocytes, random = ~ 1|Female_Line, old_phenotypic, na.action = na.omit)
 mod_Area <- lme(Marea ~ Yolked_Oocytes, random = ~ 1|Female_Line, old_phenotypic, na.action = na.omit)
-
 ```
 
-
-In order to determine if diapause is part of a generalized migratory syndrome in Australia, we also briefly re-analyzed the connection between reproductive status and wing morphology in our 2016 samples [@Freedman2018]. In order to determine if wing shape or size was correlated with reproductive status, we fit a pair of linear mixed effect models with either with wing shape or size as response variables, the number of yolked oocytes as a fixed effect, and maternal family as a random effect using the R package nlme [@Pinheiro2007].
-
-# Results
 ## Sequencing results
+We incubated female monarch butterflies from a total of `r length(unique(na.omit(old.data$fam)))` clutches of eggs produced by females collected from a continously-breeding population from southern Queensland, Australia under a decreasing photoperiod following the methods of Freedman et al. [-@Freedman2018]. The resulting `r nrow(old.data)` females were phenotyped for oocyte development as a proxy for diapause status. `r sum(sample.meta$likely_pheno[sample.meta$year == 2018] == "R", na.rm = TRUE)` butterflies were phenotyped as reproductively mature (e.g. not in diapause, and thus a non-migratory phenotype) and `r sum(sample.meta$likely_pheno[sample.meta$year == 2018] == "B", na.rm = TRUE)`as reproductively immature (e.g. in diapause, and thus a migratory phenotype). We sequenced these individuals along with a additional `r sum(sample.meta$year == 2016, na.rm = TRUE)` butterflies raised under very similar conditions by Freedman et al. [-@Freedman2018], of which `r sum(sample.meta[sample.meta$year == 2016,]$likely_pheno == "R", na.rm = TRUE)` and `r sum(sample.meta[sample.meta$year == 2016,]$likely_pheno == "M", na.rm = TRUE)` were scored in that study as reproductively mature and immature, respectively.
+
 We sequenced a total of 417,846,352 reads across all individuals, 98.8% of which mapped to the monarch reference genome. 244,443,414 reads were maintained after filtering (1,158,500 per sample, on average), encompassing `r prettyNum(L,big.mark=",",scientific=FALSE)` total sequenced bases. From this, we called `r prettyNum(nsnps(dat),big.mark=",",scientific=FALSE)` individual SNPs following filtering.
 
 
@@ -246,6 +221,34 @@ Alternatively, it is safe to assume that if migratory variance in Australian mon
 
 This study suggests that reproductive diapause in Australian monarch butterflies is influenced by a novel genetic mechanism via the DPOGS208560 gene, and that the previously identified migratory genetic elements were not associated with diapause in those populations. More research is needed to determine if the migratory variant of this gene is the result of ancestral variation maintained from North America or a new mutation. Regardless, our work is consistent with the hypothesis that proximate genetic mechanisms for migration are more likely to quickly re-emerge during a transition to a migratory life history than facultative mechanisms.
 
+# Methods
+## Sample Collection, Incubation, and Phenotyping
+
+We collected 22 female monarch butterflies from Pinjarra Hills, Queensland, Australia (27°32′26.7″S, 152°54′22.7″E) between the 5th and 9th of July 2018. Individuals in all life stages were present at the field site during our sample collections, consistent with continuous, year-round breeding. We enclosed each of these 22 females individually on either *Asclepias curassavica*  or *Gomphocarpus sp.* host plants found on-location and subsequently successfully collected eggs produced by 21 of them. While these eggs represent 21 total maternal families, each may consist of multiple groups of half-siblings since females may mate multiple times and lay clutches with mixed parentage. We did not remove *Ophryocystis elektroscirrha* (a protozoan parasite) spores, which were uniformly present on our eggs [consistent with previous reports from this location, see @Freedman2018].
+
+We then incubated all eggs using the same incubators and following the "decreasing photoperiod" experimental scheme of Freedman et al. [-@Freedman2018] in order to induce reproductive diapause and ensure that our data could be later pooled with that produced in the earlier study. Briefly, larvae were reared at a constant temperature of 28°C under a photoperiod regime that declined from 14:10 L:D to 12:12 L:D over the course of 30 days (Δ4 mins/day). We released all male butterflies following emergence, since phenotyping diapause in male monarchs can be challenging due to the difficulty in extracting and weighing the ejaculatory duct, seminal vesicle, and accessory glands, which are likely the best indicator of male reproductive development [@Goehring2002]. This left us with a total of `r nrow(old.data)` females from `r length(unique(na.omit(old.data$fam)))` maternal families.
+
+We assessed reproductive diapause by determining the degree of oocyte development in each of our adult female butterflies. We observed that individuals fell into two clearly defined bins: `r sum(old.data$Phenotype == "C", na.rm = TRUE)` out of `r nrow(old.data)` had fully developed, chorionated eggs (visible ridges along the exterior of the egg), while `r sum(old.data$Phenotype != "C", na.rm = TRUE)` females did not. Of these latter individuals, a few (`r sum(old.data$Phenotype == "I", na.rm = TRUE) + sum(old.data$Phenotype == "N", na.rm = TRUE)`) had no yolk in their eggs whatsoever, but most had some degree of yolking. Since vitellogenesis generally only begins to a substantial degree after eclosion in monarchs [@Pan1976], we called any individuals with more than a small amount of yolking in their eggs as reproductively mature (N = `r sum(sample.meta$likely_pheno[sample.meta$year == 2018] == "M", na.rm = TRUE)` and `r sum(sample.meta$likely_pheno[sample.meta$year == 2018] == "R", na.rm = TRUE)` for reproductively immature and mature individuals, respectively, images of egg development in each individual are available from the authors upon request). Wings and bodies from all individuals were preserved in dry coin envelops or 95% ethanol, respectively. We note that while we refer to the postponement of reproductive development under otherwise suitable conditions as diapause, other authors refer to this process in monarchs as oligopause [@jamesOvarianDormancyDanaus1982] or quiescence, since diapause implies an extended refractory period.
+
+We supplemented these samples with preserved, dry butterfly wings from each of the "decreasing photoperiod" female individuals previously scored for reproductive development by Freedman et al. [-@Freedman2018], constituting an additional `r sum(sample.meta$year == 2016, na.rm = TRUE)` total female butterflies from `r length(unique(meta.micah$Female_Line[meta.micah$Treatment == "Decreasing"]))` maternal families, of which `r sum(sample.meta[sample.meta$year == 2016,]$likely_pheno == "M", na.rm = TRUE)` and `r sum(sample.meta[sample.meta$year == 2016,]$likely_pheno == "R", na.rm = TRUE)` were scored by the authors as reproductively immature and mature, respectively. Together, these two datasets contained `r length(na.omit(sample.meta$likely_pheno))` monarch butterflies, of which `r sum(sample.meta$likely_pheno == "M", na.rm = TRUE)` and `r sum(sample.meta$likely_pheno == "R", na.rm = TRUE)` were reproductively immature and mature, respectively (see Table 1).
+
+
+## Sequencing and Genotyping
+We removed and extracted DNA from one leg from each of our samples collected in 2018 or from a wing base from each of the samples collected by Freedman et al [-@Freedman2018] using the magnetic bead protocol of Ali et al [-@Ali389]. We quantified the resulting DNA on a BioTek Instruments FLx800 Fluorescence Reader using Thermo Fisher Scientific Quant-iT PicoGreen dsDNA Reagent, then prepared Restriction Associated Digest (RAD) libraries using the Pst1 restriction enzyme according to Ali et al [-@Ali389]. We sequenced these 150 bp paired-end sequencing libraries using an Illumina Hi-Seq 4000.
+
+We aligned the resulting raw sequence data to the v4 monarch butterfly genome assembly [@Gu2019] using the mem algorithm of the Burrows-Wheeler Aligner [@Li2009a]. We then filtered out PCR duplicates, improperly paired, or poorly mapped reads using SAMtools [@Li2009]. We then called gentoypes using the ANGSD software package with the following parameters: -doMajorMinor 1 (determine major and minor alleles using a genotype likelihood approach),  -doMaf 2 (determine minor allele frequencies), -SNP_pval 1e-8 (keep only loci with a SNP p-value $\le 1 \times 10^{-8}$), -doGeno 4 (call genotypes), -doPost 2 (calculate genotype posterior probabilities using a uniform prior), -postCutoff 0.95 (keep only loci where the highest genotype posterior probability $\ge 0.95$), -minQ 20 (keep only loci with a sequencing quality $\ge 20$), -minMapQ 20 (keep only loci with a mapping quality $\ge 20$), -minInd 130 (keep only loci sequenced in at least 130 individuals), and -minMaf 0.05 (keep only loci with a minor allele frequency $\ge 0.05$). 
+
+<!-- we removed poorly seqeuenced individuals later in the pipeline, so these numbers are actually the final numbers. Not sure if that matters, but can fix. -->
+
+## Statistical Analysis
+
+
+In order to determine if any genomic regions were significantly associated with reproductive diapause, we used the snpR R package to filter out loci significantly out of Hardy-Weinburg Equilibrium ($p \le 0.000001$) in either year in order to help remove any paralogous loci and interpolated missing data by conducting binomial draws at missing genotypes using the minor allele frequencies at those loci [@hemstromSnpRUserFriendly2023]. To assess the basic level of genetic diversity amongst our samples, we then calculated the average number of pairwise differences ($\pi$), observed heterozygosity ($H_{O}$), and $F_{IS}$ according to Weir and Cockerham [-@Weir1984] for all of our samples and for each year independently using snpR [@hemstromSnpRUserFriendly2023]. We also calculated $F_{ST}$ according to Weir and Cockerham [-@Weir1984] between sample years and between both sample year and reproductive phenotype jointly [@hemstromSnpRUserFriendly2023]. We bootstrapped a significance level for $F_{ST}$ by bootstrapping individuals among populations with replacement 100 times. To determine if there was any substantial unexpected genetic structuring (other than family groups) in our samples, we conducted a Principal Component Analysis using snpR [@hemstromSnpRUserFriendly2023]. Since some individuals escaped their rearing dishes (but not the incubator) during rearing, we also confirmed the parentage of our samples using the Colony2 program, assuming polygamous, random mating [@Jones2010].
+
+In order to determine the degree to which diapause status was biased between families, we constructed a Fisher's exact test for independence using 2000 simulations in R version 4.2.2 [@rcoreteamLanguageEnvironmentStatistical2022]. We then conducted a Genome-Wide Association Study (GWAS) in order to determine if any loci were significantly associated with reproductive status. Since our samples were composed of many groups of full and half-siblings and came from two genetically different years, we used the GMMAT R package to conduct a population and family structure-corrected GWAS [@Chen2020; @Chen2016]. We visualized the results by constructing a Manhattan plot using snpR [@hemstromSnpRUserFriendly2023]. We identified the genes underlying any candidate regions by hand using the MonarchBase genome browser online tool [@Zhan2013].
+
+In order to determine if diapause is part of a generalized migratory syndrome in Australia, we also briefly re-analyzed the connection between reproductive status and wing morphology in our 2016 samples [@Freedman2018]. In order to determine if wing shape or size was correlated with reproductive status, we fit a pair of linear mixed effect models with either with wing shape or size as response variables, the number of yolked oocytes as a fixed effect, and maternal family as a random effect using the R package nlme [@Pinheiro2007].
+
 
 # References
 <div id="refs"></div>
@@ -270,12 +273,27 @@ colnames(Tab1) <- c("Year", "# In Diapause", "# Reproductive", "# Total")
 #              col.names = c("Year", "# Diapause", "# Reproductive", "# Total"), escape = FALSE) %>% kableExtra::kable_styling()
 
 
-flextable::regulartable(Tab1, cwidth = 1.2) %>% flextable::set_caption(., "Counts of individuals per reproductive status in each year.")
+flextable::regulartable(Tab1, cwidth = 1.2) %>% flextable::set_caption(., "Counts of individual monarch butterfly reproductive status in each year.")
 ```
 
-```{r Figure_1_print,echo=FALSE,warning=FALSE,fig.cap="Figure 1: Approximate ranges ancestral and introduced range with introduction dates for monarch butterflies in the Pacific, with sampling location noted in orange.",fig.width=8, fig.height=8, fig.align='center', fig.cap.style="Image Caption"}
-Figure1 <- imager::load.image("../results/map_annotated.jpg")
-plot(image, axes = FALSE)
+
+```{r Figure_1_print,echo=FALSE,warning=FALSE,fig.cap="Figure 1: Approximate ancestral and introduced ranges with introduction dates for monarch butterflies in the Pacific, with sampling location noted in orange.",fig.width=8, fig.height=8, fig.align='center', fig.cap.style="Image Caption"}
+
+# from https://stackoverflow.com/questions/9543343/plot-a-jpg-image-using-base-graphics-in-r
+plot_jpeg <- function(path, add=FALSE)
+{
+  require('jpeg')
+  jpg = readJPEG(path, native=T) # read the file
+  res = dim(jpg)[2:1] # get the resolution, [x, y]
+  if (!add) # initialize an empty plot area if add==FALSE
+    plot(1,1,xlim=c(1,res[1]),ylim=c(1,res[2]),asp=1,type='n',xaxs='i',yaxs='i',xaxt='n',yaxt='n',xlab='',ylab='',bty='n')
+  rasterImage(jpg,1,1,res[1],res[2])
+}
+
+plot_jpeg('../results/map_annotated.jpg') # needs to be rescaled a bit manually, or just insert the jpg directly into the docx
+
+# Figure1 <- imager::load.image("../results/map_annotated.jpg")
+# plot(image, axes = FALSE)
 
 ```
 
