@@ -1,0 +1,19 @@
+	-> angsd version: 0.938 (htslib: 1.15.1) build(Jan 12 2023 13:32:15)
+	-> angsd -P 4 -bam ../../data/v4_bamlist.txt -out association_out_likely_cov -minQ 20 -minMapQ 20 -GL 1 -SNP_pval 1e-12 -doMajorMinor 1 -doMaf 2 -minMaf 0.05 -minInd 102 -doAsso 1 -yBin ../../data/likely_ybin_v4.txt 
+	-> Fri Dec 29 19:49:34 2023
+----------------
+multiReader.cpp:
+	-nLines	50	(Number of lines to read)
+	-beagle	(null)	(Beagle Filename (can be .gz))
+	-bgen	(null)	(Bgen Filename)
+	-vcf-GL	(null)	(vcf Filename (can be bcf compressed or uncompressed))
+	-vcf-PL	(null)	(vcf Filename (can be bcf compressed or uncompressed))
+	-vcf-GP	(null)	(vcf Filename (can be bcf compressed or uncompressed))(*not used)
+	-glf	(null)	(glf Filename (can be .gz))
+	-pileup	(null)	(pileup Filename (can be .gz))
+	-intName 1	(Assume First column is chr_position)
+	-isSim	0	(Simulated data assumes ancestral is A)
+	-nInd	0		(Number of individuals)
+	-minQ	20	(minimum base quality; only used in pileupreader)
+	-fai	(null)	(fai file)
+	-minQ	20	(minimum base qual

@@ -27,7 +27,9 @@ always_allow_html: true
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
-library(snpR); library(data.table); library(ggplot2); library(gridExtra); library(dplyr); library(openxlsx); library(jpeg); library(nlme)
+library(snpR); library(data.table); library(ggplot2); library(dplyr);
+library(cowplot); library(openxlsx); library(nlme); library(gggenes);
+library(Biostrings)
 
 ```
 
@@ -42,88 +44,180 @@ meta.micah <- data.table::fread("../data/2016_mon_meta.txt", header = TRUE)
 ```
 
 ```{r import_and_diversity, echo=FALSE, message=FALSE, warning=FALSE,include=FALSE}
-L <- 6578062 # total number of sequenced bases
-
 #==========prep data==========
 # read in genotypes and metadata
-sample.meta <- read.table("../data/sample_metadata.txt", header = T, stringsAsFactors = F)
-genos <- read.table("../data/v4/genotypes.geno", stringsAsFactors = F)
-snp.meta <- genos[,1:2]
-genos <- genos[,-c(1:2)]
-colnames(snp.meta) <- c("scaffold", "position")
-
-# rename msc scaffolds
-chrs <- which(grepl("chr",snp.meta$scaffold))
-snp.meta$scaffold[-chrs] <- "other"
-snp.meta$scaffold <- factor(snp.meta$scaffold, levels = c(paste0("chr", 1:30), "other"))
+sample.meta <- read.table("../data/sample_metadata_v4.txt", header = T, stringsAsFactors = F)
 
 # remove samples with no phenotypic data
-nas <- which(is.na(sample.meta$likely_pheno))
-genos <- genos[,-which(is.na(sample.meta$likely_pheno))]
-sample.meta <- sample.meta[-which(is.na(sample.meta$relaxed_pheno)),]
+# nas <- which(is.na(sample.meta$likely_pheno))
+# genos <- genos[,-which(is.na(sample.meta$likely_pheno))]
+# sample.meta <- sample.meta[-which(is.na(sample.meta$relaxed_pheno)),]
 
 # add in colony info
 fam_info <- sample.meta(readRDS("../colony/colony_R_outputs.RDS")$col_res$x)
 fam_info$MotherID <- as.numeric(gsub("#", "", fam_info$MotherID))
 fam_info$MotherID <- factor(fam_info$MotherID, levels = 1:max(fam_info$MotherID))
-sample.meta$MotherID <- fam_info$MotherID # note, individuals are in identical order.
+sample.meta$MotherID <- fam_info$MotherID[match(sample.meta$SampleID, fam_info$SampleID)] 
+fam_info$FatherID <- as.numeric(gsub("\\*", "", fam_info$FatherID))
+fam_info$FatherID <- factor(fam_info$FatherID, levels = 1:max(fam_info$FatherID))
+sample.meta$FatherID <- fam_info$FatherID[match(sample.meta$SampleID, fam_info$SampleID)] 
+sample.meta$cluster <- fam_info$ClusterIndex[match(sample.meta$SampleID, fam_info$SampleID)] 
 
 # send year to factor, import, and filter
 sample.meta$year <- as.factor(sample.meta$year)
-# dat <- import.snpR.data(genos, snp.meta, sample.meta)
-# # dat <- dat[,-which(sample.meta(dat)$year != 2018)] # note: same locus pops out if you only use my samples, but is stronger with both. Good sign!
-# dat <- filter_snps(dat, hwe = 0.000001, hwe_facets = "year")
 
-#==========diversity===========
-# dat <- calc_pi(dat, c(".base", "year"))
-# dat <- calc_ho(dat, c(".base", "year"))
-# dat <- calc_fis(dat, c(".base", "year"))
-# dat <- calc_pairwise_fst(dat, "year", boot = 100, boot_par = 6, verbose = TRUE)
-# saveRDS(dat, "diversity_stats.RDS")
-dat <- readRDS("diversity_stats.RDS")
-diversity <- get.snpR.stats(dat, c(".base", "year"), c("pi", "ho", "fis"))$weighted.means
-diversity$weighted_mean_pi <- diversity$weighted_mean_pi/L
-diversity$weighted_mean_ho <- diversity$weighted_mean_ho/L
-fst <- get.snpR.stats(dat, "year", "fst")$weighted.means
 
-#==========PCA===============
-pca <- plot_clusters(dat, c("year.MotherID")) # color by mother and by year
+#==========PCA plot==============
+PCA <- fread("../scripts/association/PCAngsd_out.cov")
+e <- eigen(as.matrix(PCA))
+PCA <- e$vectors
+PCA <- as.data.table(PCA)
+colnames(PCA) <- paste0("PC", 1:ncol(PCA))
+t.sizes <- c(18, 12)
+FigureS1 <- ggplot(PCA, aes(x = PC1, y = PC2)) +
+  geom_point(size = 3) +
+  theme_bw() + 
+  theme(legend.text = element_text(size = t.sizes[2]),
+        axis.text = element_text(size = t.sizes[2]),
+        axis.title = element_text(size = t.sizes[1]),
+        axis.text.y = element_text(size = t.sizes[2]),
+        legend.title = element_text(size = t.sizes[1])) +
+  xlab(paste0("PC1 (", round(e$values[1]/sum(e$values)*100, 3), "%)")) +
+  ylab(paste0("PC2 (", round(e$values[2]/sum(e$values)*100, 3), "%)"))
 
 ```
 
-```{r association, echo=FALSE, warning=FALSE, message=FALSE}
-# family bias
-bias <- sample.meta[,c("MotherID", "likely_pheno")]
+```{r Figure2, echo=FALSE, warning=FALSE, message=FALSE}
+#==========family bias===================
+bias <- sample.meta[,c("MotherID", "FatherID", "quant_pheno")]
+bias$quant_pheno <- bias$quant_pheno/2
 bias$MotherID <- as.factor(bias$MotherID)
-bias$likely_pheno <- as.factor(bias$likely_pheno)
-fisher_res <- fisher.test(bias$MotherID, bias$likely_pheno, simulate.p.value = TRUE)
+bias$FatherID <- as.factor(bias$FatherID)
 
-bias_p <- reshape2::dcast(bias, MotherID ~ likely_pheno)
-bias_p$total <- bias_p$M + bias_p$R
-bias_p$proportion <- bias_p$M/bias_p$total
-# Figure3a <- ggplot(bias, aes(x = bias$MotherID, fill = bias$likely_pheno)) + geom_bar(position = 'dodge')
-Figure3a <- ggplot(bias_p, aes(x = MotherID, y = proportion, size = total)) + geom_point() + theme_bw() + geom_hline(yintercept = .5) + xlab("Maternal Family") + ylab("Proportion Diapaused") + labs(size = "n")
-Figure3al <- ggpubr::get_legend(Figure3a)
-Figure3a <- Figure3a + theme(legend.position = "none")
+# permute to show expected random range per rank
+perms <- matrix(0, 1000, length(unique(bias$MotherID)))
+for(i in 1:nrow(perms)){
+  tb <- bias
+  tb$quant_pheno <- sample(tb$quant_pheno, nrow(tb), TRUE)
+  perm_p <- tapply(tb$quant_pheno, tb$MotherID, mean)
+  perm_p <- as.data.frame(perm_p)
+  perm_p$MotherID <- 1:nrow(perm_p)
+  colnames(perm_p)[1] <- "score"
+  perm_p$rank <- rank(perm_p$score, ties.method = "first")
+  perm_p$total <- as.numeric(table(tb$MotherID))
+  perms[i,] <- perm_p$score[order(perm_p$rank)]
+}
+perm_summary <- data.table(score = colMeans(perms),
+                           rank = 1:ncol(perms))
+perm_summary[, c("lCI", "uCI") := as.data.frame(t(apply(perms, MARGIN = 2, FUN = function(x){
+  return(t.test(x)$conf.int)
+})))]
+
+# anova to show significance
+m1 <- lm(quant_pheno ~ MotherID, bias)
+m1_an <- anova(m1)
+
+# convert for plotting
+bias_p <- tapply(bias$quant_pheno, bias$MotherID, mean)
+bias_p <- as.data.frame(bias_p)
+bias_p$MotherID <- 1:nrow(bias_p)
+colnames(bias_p)[1] <- "score"
+bias_p$rank <- rank(bias_p$score, ties.method = "first")
+bias_p$total <- as.numeric(table(bias$MotherID))
+
+# generate plot
+t.sizes <- c(18, 12)
+Figure2a <- ggplot(bias_p, aes(x = rank, y = score, size = total)) +
+  geom_point(color ="#393e42") + theme_bw() +
+  geom_line(data = perm_summary, aes(x = rank, y = score), inherit.aes = FALSE, color = "#eb612e") +
+  geom_ribbon(data = perm_summary, aes(ymin = lCI, ymax = uCI, x = rank), 
+              inherit.aes = FALSE, color = "#eb612e", alpha = .2) +
+  xlab("Maternal Family") +
+  ylab("Mean Reproductive Score") +
+  labs(size = "Family Size")  +
+  theme(legend.text = element_text(size = t.sizes[2]),
+        axis.text = element_text(size = t.sizes[2]),
+        axis.title = element_text(size = t.sizes[1]),
+        axis.text.y = element_text(size = t.sizes[2]),
+        legend.title = element_text(size = t.sizes[1])) +
+  scale_size_continuous(range = c(5, 10))
+
+
+
+
+# ggsave("~/2022-2023/ICCB2023/scatter.jpg", Figure3a, device = "jpg", dpi = 1000, height = 4, width = 8, scale = 3)
+
+
   
 
-# association test
-dat <- calc_association(dat, response = "likely_pheno", maxiter = 1000)
+#==========association test -- read in from ANGSD============
+chr_key <- fread("../data/chr_info.tsv")
+chr_key$Chr_ID <- chr_key$`Chromosome name`
+chr_key$Chr_ID <- make.unique(chr_key$Chr_ID)
+chr_key$partID <- as.numeric(gsub(".+\\.", "", chr_key$Chr_ID))
+chr_key$partID[-grep("\\.", chr_key$Chr_ID)] <- 0
+chr_key <- dplyr::arrange(chr_key, as.numeric(`Chromosome name`), partID)
+adat_quant <- data.table::fread("../scripts/association/association_out_quant_cov.lrt0.gz", header = T)
+adat_quant$chr <- chr_key$Chr_ID[match(adat_quant$Chromosome, chr_key$`RefSeq seq accession`)]
+adat_quant[grep("Un", chr), chr := "Other"]
+adat_quant$pval <- pchisq(adat_quant$LRT, 1, lower.tail = FALSE)
+adat_quant$lpval <- -log(adat_quant$pval)
+adat_quant$fdr <- p.adjust(adat_quant$pval, "fdr")
+adat_quant <- dplyr::arrange(adat_quant, pval)
 
-# top SNP
-top_snp <- dplyr::arrange(get.snpR.stats(dat, stats = c("association", "maf"))$single, gmmat_pval_likely_pheno)[1,]
-match <- which(snp.meta(dat)$scaffold == top_snp$scaffold[1] & snp.meta(dat)$position == top_snp$position[1])
-gmatch <- genotypes(dat)[match,]
-gmatch <- data.frame(genotype = unlist(gmatch), phenotype = sample.meta(dat)$likely_pheno)
-gmatch$genotype[gmatch$genotype == "NN"] <- NA
-gmatch$genotype <- ifelse(gmatch$genotype == "GG", "resident", "migrant")
-gtable <- table(gmatch)
-gtable <- addmargins(gtable)
+q_quant <- plot_qq(adat_quant, "pval")
+Figure2b <- ggplot(q_quant$.base$data, aes(x = .e, y = .o)) +
+  geom_point(color = "#393e42") +
+  geom_abline(slope = 1, intercept = 0, color = "#eb612e") +
+  theme_bw() +
+  theme(legend.text = element_text(size = t.sizes[2]),
+        axis.text = element_text(size = t.sizes[2]),
+        axis.title = element_text(size = t.sizes[1]),
+        axis.text.y = element_text(size = t.sizes[2]),
+        legend.title = element_text(size = t.sizes[1])) +
+  ylab(bquote(Observed ~ log[10](p))) +
+  xlab(bquote(Expected ~ log[10](p)))
+  
+
+# note -- color scheme for posters!
+ord <- unique(chr_key$Chr_ID, sort = F)
+ord <- ord[-grep("Un", ord)]
+ord <- ord[-which(ord == "Z")]
+ord <- c("Z", ord, "Other")
+Figure2c <- plot_manhattan(adat_quant, "fdr", chr = "chr", bp = "Position",
+                           significant = 0.05, suggestive = .1, log.p = TRUE,
+                           chr_order = ord,
+                           highlight = FALSE, colors = c("#eb612e", "#393e42"), 
+                           t.sizes = c(t.sizes[1], t.sizes[1], t.sizes[2]), 
+                           simplify_output = TRUE) # highlight top snp
+
+# refetch chr centers, pulled from snpR
+chr.info <- tapply(Figure2c$data[,"cum.bp"], Figure2c$data[,"chr"], max) # chromosome lengths
+chr.centers <- rowMeans(cbind(tapply(Figure2c$data[,"cum.bp"], Figure2c$data[,"chr"], min), chr.info)) # chromosome centers
 
 # plot
-Figure3b <- plot_manhattan(dat, "gmmat_pval_likely_pheno", chr = "scaffold", significant = 0.00005, suggestive = 0.0005, log.p = T,
-                           chr_order = c(paste0("chr", 1:30), "other"), highlight_style = "red") # highlight top snp
-Figure3b <- Figure3b$plot + ylab("-log10(p-value)") + xlab("Position") + theme(strip.text = element_blank())
+Figure2c <- Figure2c +
+  ylab("-log10(p-value)") +
+  xlab("Chromosome") +
+  theme(legend.text = element_text(size = t.sizes[2]),
+        axis.text = element_text(size = t.sizes[2]),
+        axis.title = element_text(size = t.sizes[1]),
+        axis.text.y = element_text(size = t.sizes[2]),
+        legend.title = element_text(size = t.sizes[1])) +
+  scale_x_continuous(expand = c(0, 0), breaks = chr.centers, labels = 
+                       names(chr.centers))
+
+# ggsave("~/2022-2023/ICCB2023/manhattan.jpg", Figure3b, device = "jpg", dpi = 1000, height = 4, width = 8, scale = 3)
+
+#==========combine=======================
+Figure2_top <- plot_grid(Figure2a, Figure2b, align = "hv", axis = "tl")
+
+Figure2 <- plot_grid(Figure2_top,
+                     Figure2c,
+                     nrow = 2)
+
+save_plot("Figure2.pdf", Figure2, base_height = 11, base_width = 15)
+
 ```
 
 ```{r re_analyze, include=FALSE}
@@ -132,6 +226,150 @@ old_phenotypic <- read.xlsx("../data/monarch_development.xlsx")
 mod_AsRa <- lme(Aspect_Ratio ~ Yolked_Oocytes, random = ~ 1|Female_Line, old_phenotypic, na.action = na.omit)
 mod_Area <- lme(Marea ~ Yolked_Oocytes, random = ~ 1|Female_Line, old_phenotypic, na.action = na.omit)
 ```
+
+
+```{r genes_of_interest}
+#=======identify targets=========
+window <- 50*1000 # 10kb
+targets <- adat_quant[fdr <= 0.05,]
+targets[,start := Position - window]
+targets[,end := Position + window]
+targets <- dplyr::arrange(targets, Chromosome, start)
+
+# one peak per chr, so simplify
+targets[,start := min(start), by = chr]
+targets[,end := max(end), by = chr]
+targets <- unique(targets[,c("Chromosome", "chr", "start", "end")])
+
+#=======locate genes=============
+gtf <- rtracklayer::readGFF("../data/genomic.gtf")
+gtf <- as.data.table(gtf)
+gtf[,direction := ifelse(strand == "+", TRUE, FALSE)]
+keep <- vector("list", nrow(targets))
+all_genes <- keep
+for(i in 1:nrow(targets)){
+  keep[[i]] <- gtf[which(seqid == targets[i,Chromosome] &
+                     ((end >= targets[i,start] & end <= targets[i,end]) |
+                        (start <= targets[i,end] & start >= targets[i,start]) |
+                        (start <= targets[i, start] & end >= targets[i, end]))),]
+  all_genes[[i]] <- unique(keep[[i]][type == "gene",])
+}
+all_genes <- rbindlist(all_genes, idcol = "target")
+IDs <- gsub("GeneID:", "", all_genes$db_xref)
+
+# get the prot sequences from NCBI
+cmd <- paste0("~/bin/datasets download gene gene-id ", paste0(IDs, collapse = " "))
+system(cmd)
+
+# copy the .faa and paste into monarchbase, read in the result here
+prot_matches <- fread("../data/prot_matches_monarchbase.txt")
+prot_matches[,LOC := unlist(stringi::stri_extract_all_regex(`Query ID`, "LOC.{9}"))]
+prot_matches <- dplyr::arrange(prot_matches, LOC, Evalue)
+prot_matches <- prot_matches[, head(.SD, 1), by= `Query ID`]
+prot_matches <- dplyr::arrange(prot_matches, Length)
+prot_matches <- prot_matches[, head(.SD, 1), by= LOC]
+
+all_genes <- merge(all_genes, prot_matches, by.x = "gene_id", by.y = "LOC", all = TRUE)
+
+#========plot====================
+plot_parts <- vector("list", nrow(targets))
+for(i in 1:nrow(targets)){
+  # figure out max and min range
+  min_pos <- targets[i,start]
+  max_pos <- targets[i,end]
+  
+  tgtf <- keep[[i]]
+  subgene <- tgtf[type == "CDS",]
+  tgtf <- tgtf[type == "gene",]
+  subgene[,gene_start := tgtf$start[match(gene, tgtf$gene)]]
+  subgene[,gene_end := tgtf$end[match(gene, tgtf$gene)]]
+  
+  tgtf[,gene_lab := start + ((end - start)/2)]
+  tgtf$OGS_name <- all_genes$`Monarch geneid`[match(tgtf$gene_id, all_genes$gene_id)]
+  tgtf$OGS_name[is.na(tgtf$OGS_name)] <- tgtf$gene_id[is.na(tgtf$OGS_name)]
+
+  subgene[,OGS_name := tgtf$OGS_name[match(gene, tgtf$gene)]]
+  
+  if(min_pos > min(c(tgtf$start, tgtf$end))){
+    min_pos <- min(c(tgtf$start, tgtf$end))
+  }
+  if(max_pos < max(c(tgtf$start, tgtf$end))){
+    max_pos <- max(c(tgtf$start, tgtf$end))
+  }
+  
+  # plot SNPs
+  
+  tsnps <- adat_quant[which(Chromosome == targets[i,Chromosome] &
+                     Position >= min_pos & Position <= max_pos),]
+  
+  pt <- ggplot(tsnps, aes(x = Position/1000000, y = -log10(fdr))) +
+    geom_point() +
+    theme_bw() +
+    scale_x_continuous(limits = c(min_pos/1000000, max_pos/1000000)) +
+    scale_y_continuous(expand = c(0, .05))
+  
+  if(i == 1)
+    pt <- pt + 
+    theme(axis.text.x = element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.y = element_text(size = t.sizes[2]),
+          axis.title.y = element_text(size = t.sizes[1]),
+          axis.ticks.x = element_blank()) +
+  ylab(bquote(-log[10](p[FDR])))
+  
+  if(i != 1){
+    pt <- pt + 
+      theme(axis.text.x = element_blank(),
+          axis.title = element_blank(),
+          axis.text.y = element_text(size = t.sizes[2]),
+          axis.ticks.x = element_blank())
+  }
+  
+  
+  
+  
+  pb <- ggplot(tgtf, aes(xmin = start/1000000, xmax = end/1000000, 
+                         y = OGS_name, forward = direction, fill = gene)) +
+    geom_gene_arrow(arrow_body_height = unit(1, "lines"),
+                    arrowhead_height = unit(1.5, "lines"), show.legend = FALSE,
+                    fill = "#E5C16F") + 
+    geom_subgene_arrow(data = subgene, 
+                       aes(xmin = gene_start/1000000, xmax = gene_end/1000000, 
+                           xsubmin = start/1000000, xsubmax = end/1000000,
+                           y = OGS_name), 
+                       fill = "black", arrow_body_height = unit(1, "lines"),
+                       arrowhead_height = unit(1.5, "lines")) +
+    theme_bw() +
+    scale_x_continuous(limits = c(min_pos/1000000, max_pos/1000000)) +
+    ylab("Gene") +
+    xlab(paste0("Chromosome ", targets[i]$chr, "Position (kb)"))
+  
+  if(i == 1)
+    pb <- pb + 
+    theme(axis.text = element_text(size = t.sizes[2]),
+          axis.title = element_text(size = t.sizes[1]))
+  
+  if(i != 1){
+    pb <- pb + 
+      theme(axis.title.y = element_blank(),
+          axis.text = element_text(size = t.sizes[2]),
+          axis.title.x = element_text(size = t.sizes[1]))
+  }
+  
+  plot_parts[[i]] <- plot_grid(pt, pb, ncol = 1, rel_heights = c(1, 1),
+                               align = "hv", axis = "tl")
+  
+}
+
+Figure3 <- plot_grid(plot_parts[[1]],
+                     plot_parts[[2]] + theme(axis.title.y = element_blank()),
+                     plot_parts[[3]] + theme(axis.title.y = element_blank()), nrow = 1) +
+  theme(plot.margin = unit(c(.1, .5, .1, .5), "cm"))
+
+save_plot("Figure3.pdf", Figure3, base_height = 11, base_width = 15)
+
+```
+
 
 <!-- Introduction: -->
 <!--   Migration, partial migration, and adaptation to environmental change. -->

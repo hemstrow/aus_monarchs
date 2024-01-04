@@ -1,0 +1,16 @@
+PCAngsd v1.21
+Time: 01/01/2024 01:36:27
+Directory: /mnt/c/Users/hemst/Documents/GitHub/aus_monarchs/scripts/association
+Options:
+	--beagle genolike.beagle.gz
+	--n_eig 10
+	--threads 4
+	--out PCAngsd_out
+
+Loaded 445280 sites and 204 individuals.
+Number of sites after MAF filtering (0.05): 445280
+
+PCAngsd converged in 88 iterations using 10 eigenvectors.
+Saved covariance matrix as PCAngsd_out.cov
+
+Total elapsed time: 1m52s
