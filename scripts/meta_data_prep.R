@@ -4,7 +4,8 @@ library(readr)
 barcodes <- read_delim("data/sample_IDs_barcodes.txt", "\t", escape_double = FALSE, trim_ws = TRUE)
 meta18 <- read_delim("data/2018_mon_meta.txt", "\t", escape_double = FALSE, trim_ws = TRUE)
 meta16 <- read_delim("data/2016_mon_meta.txt", "\t", escape_double = FALSE, trim_ws = TRUE)
-bamlist <- read.table("data/gbamlist.txt", stringsAsFactors = F)
+bamlist <- read.table("data/v4_bamlist.txt", stringsAsFactors = F)
+bamlist[,1] <- gsub("~/monarch/aus_monarchs/SOMM/v4/", "", bamlist[,1])
 
 # condense phenotype calls
 # strict: yolked at all means resident
@@ -35,8 +36,8 @@ meta16$year <- "2016"
 meta18$year <- "2018"
 
 # pull out barcode and plate from bamlist
-bamtable <- data.frame(Plate = substr(bamlist[,1], 6, 12),
-                       Index = substr(bamlist[,1], 32, 39),
+bamtable <- data.frame(Plate = substr(bamlist[,1], 1, 7),
+                       Index = substr(bamlist[,1], 27, 34),
                        ord = 1:nrow(bamlist))
 bamtable$Plate <- gsub("_", "", bamtable$Plate)
 barcodes$Plate <- tolower(barcodes$Plate)
@@ -76,6 +77,6 @@ colnames(sample.meta)[5] <- "emm_date"
 
 
 # save
-write.table(sample.meta, "data/sample_metadata.txt", sep = "\t", quote = F, col.names = T, row.names = F)
+write.table(sample.meta, "data/sample_metadata_v4.txt", sep = "\t", quote = F, col.names = T, row.names = F)
 
 

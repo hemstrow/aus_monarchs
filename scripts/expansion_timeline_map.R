@@ -25,17 +25,36 @@ world_robin <- st_transform(world, crs = '+proj=robin +lon_0=180 +x_0=0 +y_0=0 +
 
 sf::sf_use_s2(TRUE)
 
+# world <- ggplot() +
+#   geom_sf(data = world_robin, fill= "azure2")  + #background color for land
+#   coord_sf(xlim = c(-70e5, 100e5),
+#            ylim = c(-60e5, 58e5)) +
+#   theme_bw() +
+#   annotation_scale(text_cex = 1.5) + 
+#   theme(axis.text = element_text(size = 20),
+#         axis.title = element_text(size = 24)) +
+#   annotation_north_arrow(style = north_arrow_fancy_orienteering(text_size = 20), location = "bl", 
+#                          pad_y = grid::unit(.05, "native"))
+# 
+# world
+# ggsave("results/map.jpg", world, "jpg", width = 15, height = 11) # note, need to annotate this with ranges and arrows to produce final image
+
 world <- ggplot() +
-  geom_sf(data = world_robin, fill= "azure2")  + #background color for land
+  geom_sf(data = world_robin, fill= "#dec079")  + #background color for land
   coord_sf(xlim = c(-70e5, 100e5),
            ylim = c(-60e5, 58e5)) +
   theme_bw() +
-  annotation_scale(text_cex = 1.5) + 
-  theme(axis.text = element_text(size = 20),
-        axis.title = element_text(size = 24)) +
-  annotation_north_arrow(style = north_arrow_fancy_orienteering(text_size = 20), location = "bl", 
+  annotation_scale(text_cex = 1.5, bar_cols = c("#eb612e", "#dec079"), text_family = "serif", text_col = "#fdfdfc", pad_y = unit(0.75, "cm")) +
+  theme(axis.text = element_text(size = 20, color = "#fdfdfe"),
+        axis.title = element_text(size = 24),
+        panel.grid = element_line(color = "#393e42")) +
+  annotation_north_arrow(style = north_arrow_fancy_orienteering(text_size = 20,
+                                                                text_col = "#fdfdfe",
+                                                                text_family = "serif",
+                                                                fill = c("#eb612e", "#dec079"),
+                                                                line_col = "#fdfdfe"),
+                         location = "bl",
                          pad_y = grid::unit(.05, "native"))
 
 world
-ggsave("results/map.jpg", world, "jpg", width = 15, height = 11) # note, need to annotate this with ranges and arrows to produce final image
-
+ggsave("~/2022-2023/ICCB2023/world.jpg", world, "jpg", width = 15, height = 11) # note, need to annotate this with ranges and arrows to produce final image

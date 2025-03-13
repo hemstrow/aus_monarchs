@@ -1,5 +1,5 @@
 ---
-title: "Novel genetic control of migratory diapause in Australian Monarch Butterflies"
+title: "Novel genetic control of migratory diapause in Australian monarch butterflies"
 date: "`r format(Sys.time(), '%d %B %Y')`"
 output:
   word_document:
@@ -11,7 +11,7 @@ output:
     fig_width: 7
     fig_height: 6
 bibliography: "paper-files/citations.bib"
-csl: "paper-files/apa.csl"
+csl: "paper-files/vancouver.csl"
 header-includes:
   - \usepackage[left]{lineno}
   - \linenumbers
@@ -31,6 +31,67 @@ library(snpR); library(data.table); library(ggplot2); library(dplyr);
 library(cowplot); library(openxlsx); library(nlme); library(gggenes);
 library(Biostrings)
 
+library(rnaturalearth)
+library(ggplot2)
+library(sf)
+library(ggspatial)
+library(ggimage)
+
+```
+
+```{r base_map, include=FALSE}
+world <- ne_countries(scale = 'small', returnclass = 'sf')
+
+polygon <- st_polygon(x = list(rbind(c(-0.0001, 90),
+                                     c(0, 90),
+                                     c(0, -90),
+                                     c(-0.0001, -90),
+                                     c(-0.0001, 90)))) |>
+  st_sfc() |>
+  st_set_crs(4326)
+
+sf::sf_use_s2(FALSE)
+
+
+world <- world |> st_difference(polygon)
+
+world_robin <- st_transform(world, crs = '+proj=robin +lon_0=180 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs')
+
+sf::sf_use_s2(TRUE)
+
+# world <- ggplot() +
+#   geom_sf(data = world_robin, fill= "azure2")  + #background color for land
+#   coord_sf(xlim = c(-70e5, 100e5),
+#            ylim = c(-60e5, 58e5)) +
+#   theme_bw() +
+#   annotation_scale(text_cex = 1.5) + 
+#   theme(axis.text = element_text(size = 20),
+#         axis.title = element_text(size = 24)) +
+#   annotation_north_arrow(style = north_arrow_fancy_orienteering(text_size = 20), location = "bl", 
+#                          pad_y = grid::unit(.05, "native"))
+# 
+# world
+# ggsave("results/map.jpg", world, "jpg", width = 15, height = 11) # note, need to annotate this with ranges and arrows to produce final image
+
+world <- ggplot() +
+  geom_sf(data = world_robin, fill= "#dec079")  + #background color for land
+  coord_sf(xlim = c(-70e5, 100e5),
+           ylim = c(-60e5, 58e5)) +
+  theme_bw() +
+  annotation_scale(text_cex = 1.5, bar_cols = c("#eb612e", "#dec079"), text_family = "serif", text_col = "#393e42", pad_y = unit(0.75, "cm")) +
+  theme(axis.text = element_text(size = 20, color = "#393e42"),
+        axis.title = element_text(size = 24),
+        panel.grid = element_line(color = "#393e42")) +
+  annotation_north_arrow(style = north_arrow_fancy_orienteering(text_size = 20,
+                                                                text_col = "#393e42",
+                                                                text_family = "serif",
+                                                                fill = c("#eb612e", "#dec079"),
+                                                                line_col = "#393e42"),
+                         location = "bl",
+                         pad_y = grid::unit(.05, "native"))
+
+world
+ggsave("Figure1_base.jpg", world, "jpg", width = 15, height = 11)
 ```
 
 
@@ -135,12 +196,14 @@ Figure2a <- ggplot(bias_p, aes(x = rank, y = score, size = total)) +
   xlab("Maternal Family") +
   ylab("Mean Reproductive Score") +
   labs(size = "Family Size")  +
-  theme(legend.text = element_text(size = t.sizes[2]),
+  theme(legend.text = element_text(size = t.sizes[2] - 2),
         axis.text = element_text(size = t.sizes[2]),
         axis.title = element_text(size = t.sizes[1]),
         axis.text.y = element_text(size = t.sizes[2]),
-        legend.title = element_text(size = t.sizes[1])) +
-  scale_size_continuous(range = c(5, 10))
+        legend.title = element_text(size = t.sizes[2]),
+        title = element_text(size = t.sizes[1] + 2)) +
+  scale_size_continuous(range = c(5, 10)) +
+  ggtitle("B")
 
 
 
@@ -174,9 +237,11 @@ Figure2b <- ggplot(q_quant$.base$data, aes(x = .e, y = .o)) +
         axis.text = element_text(size = t.sizes[2]),
         axis.title = element_text(size = t.sizes[1]),
         axis.text.y = element_text(size = t.sizes[2]),
-        legend.title = element_text(size = t.sizes[1])) +
+        legend.title = element_text(size = t.sizes[1]),
+        title = element_text(size = t.sizes[1] + 2)) +
   ylab(bquote(Observed ~ log[10](p))) +
-  xlab(bquote(Expected ~ log[10](p)))
+  xlab(bquote(Expected ~ log[10](p))) +
+  ggtitle("C")
   
 
 # note -- color scheme for posters!
@@ -203,14 +268,43 @@ Figure2c <- Figure2c +
         axis.text = element_text(size = t.sizes[2]),
         axis.title = element_text(size = t.sizes[1]),
         axis.text.y = element_text(size = t.sizes[2]),
-        legend.title = element_text(size = t.sizes[1])) +
+        legend.title = element_text(size = t.sizes[1]),
+        title = element_text(size = t.sizes[1] + 2)) +
   scale_x_continuous(expand = c(0, 0), breaks = chr.centers, labels = 
-                       names(chr.centers))
+                       names(chr.centers)) +
+  ggtitle("D")
 
 # ggsave("~/2022-2023/ICCB2023/manhattan.jpg", Figure3b, device = "jpg", dpi = 1000, height = 4, width = 8, scale = 3)
 
+#==========egg photos (actual A)=========
+imgs <- data.frame(category = c("Mature", "Partially Mature", "Immature"),
+                   img = c("~/GitHub/aus_monarchs/paper/paper-files/mature.JPG",
+                           "~/GitHub/aus_monarchs/paper/paper-files/partially_mature.JPG",
+                           "~/GitHub/aus_monarchs/paper/paper-files/immature.JPG"),
+                   x = 1,
+                   y = 1)
+imgs$category <- factor(imgs$category, levels = c("Mature", "Partially Mature", "Immature"))
+
+eggplot <- ggplot(imgs, aes(x = x, y = y, image = img)) +
+  geom_image(size = 1.3) +
+  facet_wrap(~category, ncol = 1, strip.position = "left") +
+  theme_minimal() +
+  theme(strip.text = element_text(size = t.sizes[2], angle = 90),
+        strip.placement = "outside",
+        title = element_text(size = t.sizes[1] + 2),
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        panel.grid = element_blank()) +
+  ggtitle("A")
+
+
 #==========combine=======================
-Figure2_top <- plot_grid(Figure2a, Figure2b, align = "hv", axis = "tl")
+f2al <- ggpubr::get_legend(Figure2a)
+Figure2_top <- plot_grid(eggplot, Figure2a + guides(size = "none"), 
+                         f2al, Figure2b, 
+                         align = "hv", axis = "tlbr",
+                         nrow = 1,
+                         rel_widths = c(.5, 1, .2, 1)) # note, A is actually egg pictures, these labels are off
 
 Figure2 <- plot_grid(Figure2_top,
                      Figure2c,
@@ -226,7 +320,6 @@ old_phenotypic <- read.xlsx("../data/monarch_development.xlsx")
 mod_AsRa <- lme(Aspect_Ratio ~ Yolked_Oocytes, random = ~ 1|Female_Line, old_phenotypic, na.action = na.omit)
 mod_Area <- lme(Marea ~ Yolked_Oocytes, random = ~ 1|Female_Line, old_phenotypic, na.action = na.omit)
 ```
-
 
 ```{r genes_of_interest}
 #=======identify targets=========
@@ -273,6 +366,9 @@ all_genes <- merge(all_genes, prot_matches, by.x = "gene_id", by.y = "LOC", all 
 
 #========plot====================
 plot_parts <- vector("list", nrow(targets))
+pmax <- max(-log10(adat_quant$fdr))
+
+
 for(i in 1:nrow(targets)){
   # figure out max and min range
   min_pos <- targets[i,start]
@@ -306,7 +402,9 @@ for(i in 1:nrow(targets)){
     geom_point() +
     theme_bw() +
     scale_x_continuous(limits = c(min_pos/1000000, max_pos/1000000)) +
-    scale_y_continuous(expand = c(0, .05))
+    scale_y_continuous(expand = c(0, .05), limits = c(0, pmax))
+  
+  pmax <- max(c(pmax, max(-log10(tsnps$fdr))))
   
   if(i == 1)
     pt <- pt + 
@@ -326,7 +424,8 @@ for(i in 1:nrow(targets)){
   }
   
   
-  
+  tgtf$OGS_name[tgtf$OGS_name == "DPOGS204613"] <- paste0("Karst/DPOGS204613")
+  subgene$OGS_name[subgene$OGS_name == "DPOGS204613"] <- paste0("Karst/DPOGS204613")
   
   pb <- ggplot(tgtf, aes(xmin = start/1000000, xmax = end/1000000, 
                          y = OGS_name, forward = direction, fill = gene)) +
@@ -342,7 +441,7 @@ for(i in 1:nrow(targets)){
     theme_bw() +
     scale_x_continuous(limits = c(min_pos/1000000, max_pos/1000000)) +
     ylab("Gene") +
-    xlab(paste0("Chromosome ", targets[i]$chr, "Position (kb)"))
+    xlab(paste0("Chromosome ", targets[i]$chr, " Position (mb)"))
   
   if(i == 1)
     pb <- pb + 
@@ -361,6 +460,7 @@ for(i in 1:nrow(targets)){
   
 }
 
+
 Figure3 <- plot_grid(plot_parts[[1]],
                      plot_parts[[2]] + theme(axis.title.y = element_blank()),
                      plot_parts[[3]] + theme(axis.title.y = element_blank()), nrow = 1) +
@@ -371,86 +471,105 @@ save_plot("Figure3.pdf", Figure3, base_height = 11, base_width = 15)
 ```
 
 
-<!-- Introduction: -->
-<!--   Migration, partial migration, and adaptation to environmental change. -->
-<!--   Monarchs in the Pacific and Australia, History -->
-<!--   Two options for migratory behavior in Aus (proximate vs ultimate causes as well) -->
-<!--   what we did -->
+```{r mapping_stats}
+sort_flagstat <- list.files("../data/v4/flagstat/", "\\.sort\\.flagstat", full.names = TRUE)
+flt_flagstat <- list.files("../data/v4/flagstat/", "\\.sort\\.flt\\.flagstat", full.names = TRUE)
+
+sort_flagstat <- unlist(lapply(sort_flagstat, readLines))
+flt_flagstat <- unlist(lapply(flt_flagstat, readLines))
+
+mapping <- data.table(sample = sample.meta$SampleID,
+                      reads = as.numeric(gsub(" .+", "", sort_flagstat[seq(1, length(sort_flagstat), by = 16)])),
+                      mapped = as.numeric(gsub(" .+", "", sort_flagstat[seq(7, length(sort_flagstat), by = 16)])),
+                      retained = as.numeric(gsub(" .+", "", flt_flagstat[seq(1, length(sort_flagstat), by = 16)])))
+
+total_reads <- sum(mapping$reads)
+total_mapped <- sum(mapping$mapped)
+total_retained <- sum(mapping$retained)
+
+percent_mapped <- total_mapped/total_reads
+percent_retained <- total_retained/total_reads
+
+```
+
+```{r Table_S1}
+
+TS1 <- all_genes[,c("gene_id", "Monarch geneid", "seqid", "start", "end")]
+TS1$Chromosome <- targets$chr[match(TS1$seqid, targets$Chromosome)]
+colnames(TS1) <- c("RefSeq ID", "OGS ID", "Chromosome RefSeq ID", "Start", "End", "Chromosome")
+TS1 <- TS1[,c("RefSeq ID", "OGS ID", "Chromosome", "Chromosome RefSeq ID", "Start", "End")]
+TS1 <- dplyr::arrange(TS1, Chromosome, Start)
+fwrite(TS1, "TableS1.txt", sep = "\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
+
+```
 
 # Abstract
 
-Monarch Butterflies (Danaus plexippus) are a charismatic and culturally important North American butterfly species that are famous for their dramatic and unique migratory life history. While non-migratory populations of the species are widespread and not of particular conservation concern, migratory populations in North America have recently seen dramatic declines, prompting concern that the migratory life history of the species may vanish over the coming years as selective factors begin to favor residency over migration. However, one relatively new non-native monarch population in Australia rapidly re-acquired a migratory life history following hundreds of generations of residency and successive bottlenecks as the species stepping-stoned across the Pacific during the late 1800's and early 1900's. The genetic process by which this happened is not currently known. We raised and sequenced individuals from Queensland, Australia and found a novel association between reproductive diapause, a key migratory trait, and a genetic locus that has not previously been identified to be involved in migration in North America. This may imply that the species might be able to rapidly re-evolve migration in other places as well and thus provides some hope that the feared loss of migration in North American monarchs may not be permanent.
+Monarch butterflies (*Danaus plexippus*) are a charismatic and culturally important North American butterfly species famous for their dramatic and unique migratory life history. While non-migratory populations of the species are widespread and apparently stable, migratory populations in North America have recently seen declines, prompting concern that the migratory phenomenon in North America may be at risk of disappearing. In contrast, a relatively recently-established monarch population in Australia has rapidly re-acquired a migratory life history following hundreds of generations of residency and successive bottlenecks as the species island-hopped across the Pacific during the late 1800s and early 1900s. The process by which migration re-emerged in Australian monarchs is not currently known. We raised and sequenced individuals from Queensland, Australia under environmental conditions associated with migration initiation and found a novel association between reproductive diapause, a key migratory trait, and the spectrin beta chain protein *Karst*. This protein is known to be involved in reproductive development in monarchs but has not previously been identified to be associated with migratory life history variance. Our results provide an intriguing example of how the temporary loss of migration—in this case likely over hundreds of generations—may not entail the loss of genetic variation associated with this complex life history strategy.
 
 # Introduction
 
-Since they rely on multiple distinct ecosystems and consistent seasonal timings, migratory species are acutely at risk from global anthropogenic environmental change [@Both2010; @chowdhurySeasonalSpatialDynamics2021].The loss of breeding, wintering, or any transitional habitats may all cause declines in migrants [@Robbins1989], as may shifts in resource phenology due to seasonal changes which can cause resource availability and species life-histories to fall out of synchrony [@Jones2010a]. It is therefore not surprising that widespread declines have been observed in many migratory taxa [@Limburg2009;@Robbins1989;@rungeConservingMobileSpecies2014].
+Migratory species are acutely at risk from global anthropogenic environmental change [@Both2010; @chowdhurySeasonalSpatialDynamics2021]. The loss of breeding, wintering, or any transitional habitats may all cause declines in migrants [@Robbins1989], as may shifts in resource phenology due to seasonal changes which can cause resource availability and species life-histories to fall out of synchrony [@Jones2010a]. It is therefore not surprising that widespread declines have been observed in many migratory taxa [@Limburg2009;@Robbins1989;@rungeConservingMobileSpecies2014].
 
-Population-level adaptability in migratory life-history should therefore be expected to increase long-term population viability by conferring resistance to phenological and environmental changes [@Pulido7341]. Migratory life-history adaptation can essentially occur along three distinct axes: 1) *temporal*, or adaptation that changes the phenology of migration; 2) *spatial*, or adaptation that alters migratory pathways and orientation; and 3) *residency*, or adaptation that shifts populations between migratory and resident life histories. Inter-population variation and adaptation in each of these pathways is well known from nature: temporal changes or variation in migration are well documented in many taxa including as birds [@Rubolini2007; @Gordo2007; @chuCommunityScienceReveals2022; @prytulaRapidAdvancementSpring2022; @pinszkeLongtermChangesAutumn2023; @mondain-monvalFlywayscaleAnalysisReveals2021], fish [@kovachGeneticChangeEarlier2012], mammals [@shuertDecadalMigrationPhenology2022], and butterflies [@culbertsonLongtermMonitoringIndicates2022; @fitchettAdvanceTimingAnnual2022];  as is short-stopping, extension of migratory pathways, or complete re-direction of migration [@Ambrosini2011; @LaSorte2007; @Visser2009; @sonnleitnerRapidShiftsMigration2022;@rushingMigratoryBehaviorWinter2020;@dufourYellowbrowedWarblerPhylloscopus2022;@dufourNewWestwardMigration2021;@jiaShiftingMigrationRoute2021]; and shifts towards residency or partial migration have been observed and/or predicted in birds [@Pulido7341; @Plummer2015; @Møller2014;@haranPatternsPartialMigration2021; @falchiInterIntrapopulationVariability2023;@bonnetlebrunEffectsUrbanizationBird2020], butterflies [@Howard2010], mammals [@VanDerRee2006; @Fleming2003; @Jones2014a], fish [@adamsOpinionPieceEvolutionary2022], and other taxa.
+Population-level adaptability in migratory life-history should therefore be expected to increase long-term population viability by conferring resistance to phenological and environmental changes [@Pulido7341]. Migratory life-history adaptation can occur along three distinct axes: 1) *temporal*, or adaptation that changes the phenology of migration; 2) *spatial*, or adaptation that alters migratory pathways and orientation; and 3) *residency*, or adaptation that shifts populations between migratory and resident life histories. Inter-population variation and adaptation in each of these pathways is well known from nature: temporal changes or variation in migration are well documented in many taxa including as birds [@Rubolini2007; @Gordo2007; @chuCommunityScienceReveals2022; @prytulaRapidAdvancementSpring2022; @pinszkeLongtermChangesAutumn2023; @mondain-monvalFlywayscaleAnalysisReveals2021], fish [@kovachGeneticChangeEarlier2012], mammals [@shuertDecadalMigrationPhenology2022], and butterflies [@culbertsonLongtermMonitoringIndicates2022; @fitchettAdvanceTimingAnnual2022];  as is short-stopping, extension of migratory pathways, or complete re-direction of migration [@Ambrosini2011; @LaSorte2007; @Visser2009; @sonnleitnerRapidShiftsMigration2022;@rushingMigratoryBehaviorWinter2020;@dufourYellowbrowedWarblerPhylloscopus2022;@dufourNewWestwardMigration2021;@jiaShiftingMigrationRoute2021]; and shifts towards residency or partial migration have been observed and/or predicted in birds [@Pulido7341; @Plummer2015; @Møller2014;@haranPatternsPartialMigration2021; @falchiInterIntrapopulationVariability2023;@bonnetlebrunEffectsUrbanizationBird2020], butterflies [@Howard2010], mammals [@VanDerRee2006; @Fleming2003; @Jones2014a], and fish [@adamsOpinionPieceEvolutionary2022].
 
-Adaptation via a transition to residency is of both particular interest and concern for the conservation of migratory species. While switching to a resident life history can allow species to avoid the increasing risks of migration and the intrinsically large energetic costs of migration in general [@McWilliams2004; @Rankin1992; @Wikelski2003], there is reasonable concern that the "extinction" of migration may not be easily reversible in some species. This is concerning since migratory life-history variation is expected to increase population adaptability [@Pulido2007], and thus the permanent loss of migration could potentially compromise long-term population persistence. Beyond this, migratory species often provide critical ecosystem services [@lopez-hoffmanEcosystemServicesTransborder2017;@semmensAccountingEcosystemServices2011] and have cultural and/or ecological  significance [@burgerComplexityBioindicatorSelection2015;@schuetzCharacterizingCulturalNiches2019;@semmensQuantifyingEcosystemService2018;@reynoldsMigratorySpeciesEcological2011] that may not survive the transition to permanent residency.
+Adaptation via a transition to residency is of both particular interest and concern for the conservation of migratory species. While switching to a resident life history can allow species to avoid the increasing risks of migration and the intrinsically large energetic costs of migration in general [@McWilliams2004; @Rankin1992; @Wikelski2003], there is reasonable concern that the "extinction" of migration may not be easily reversible in some species. Permanent loss of migratory behavior is concerning because, in general, variation in migratory tendency is expected to increase long-term population persistence [@Pulido2007]. Beyond this, migratory species often provide critical ecosystem services [@lopez-hoffmanEcosystemServicesTransborder2017;@semmensAccountingEcosystemServices2011] and have cultural and/or ecological significance [@burgerComplexityBioindicatorSelection2015;@schuetzCharacterizingCulturalNiches2019;@semmensQuantifyingEcosystemService2018;@reynoldsMigratorySpeciesEcological2011] that may not survive the transition to permanent residency.
 
-The loss of migratory behavior is a major concern for monarch butterflies (*Danaus plexippus*) [@browerAnimalMigrationsEndangered1991;@satterfieldMigratoryMonarchsThat2018]. Specifically, North American migratory monarch populations have experienced severe declines over the last several decades, sparking a fear that those populations may go extinct in the near future [@Semmens2016]. However, many individual butterflies ostensibly from the North American migratory population are now year-round residents in some areas in the southern United States [@Howard2010], where they can survive due to the presence year-round of introduced tropical milkweed (*Asclepias curassavica*) [@bataldenPotentialChangesEastern2015], and there are wide-spread, non-migratory monarch populations that are not of any immediate conservation concern [@walkerDanausPlexippusErrata]. While the species as a whole may therefore not be at risk, their migratory behavior almost certainly is. In addition to the damage to the long-term population persistence that could result from the loss of migration in North American populations (as discussed above), the loss of the publicly beloved annual monarch migration and concomitant overwintering would be culturally costly [@Gustafsson2015].
+The loss of migratory behavior is a major concern for monarch butterflies (*Danaus plexippus*) [@browerAnimalMigrationsEndangered1991;@satterfieldMigratoryMonarchsThat2018]. Specifically, North American migratory monarch populations have experienced pronounced declines in counts of overwintering individuals over the last several decades, sparking a fear that those populations may go extinct in the near future [@Semmens2016; but see @crossleyOpposingGlobalChange2022]. However, many individual butterflies ostensibly from the North American migratory population are now year-round residents in some areas in the southern United States [@Howard2010], where they can survive due to the presence year-round of introduced tropical milkweed (*Asclepias curassavica*) [@bataldenPotentialChangesEastern2015], and there are widespread, non-migratory monarch populations that are not of any immediate conservation concern [@walkerDanausPlexippusErrata]. While the species as a whole may therefore not be at risk, their migratory behavior seemingly is. In addition to the damage to the long-term population persistence that could result from the loss of migration in North American populations (as discussed above), the loss of the publicly beloved annual monarch migration and concomitant overwintering would be culturally costly [@Gustafsson2015].
 
-Interestingly, however, there is a population of monarchs in Australia in which migratory behavior has apparently re-emerged after it was previously lost. This population, which was established sometime before 1871 [@Zalucki2004], is the product of a series of sequential introductions that crossed the Pacific Ocean from North America beginning sometime in the early 1840s after the introduction of their host plants enabled individuals to survive after being blown from the mainland [Figure 1, see @Zalucki2004; @Pierce2014; @Hemstrom2022a]. Monarchs are not known to be migratory on any Pacific islands, and no migratory behavior was observed in Australia until the 1930s, when non-reproductive overwintering aggregations were observed in northern New South Wales [NSW, see @James2019]. These and other individuals were later shown to migrate hundreds of kilometers each year to their wintering grounds from more southerly, inland locations in NSW [@James2019;@jamesInductionReproductiveDormancy1983]. After over 90 years (and hundreds of generations) without any apparent migration, the behavior re-emerged in these populations. Understanding how this happened could provide crucial context around the "extinction" of migration in monarchs and other species.
+In contrast, there is a population of monarchs in Australia in which migratory behavior has apparently re-emerged after it was previously lost. This population, which was established sometime before 1871 [@Zalucki2004], is the product of a series of sequential introductions that crossed the Pacific Ocean from North America beginning sometime in the early 1840s after the introduction of their host plants enabled individuals to survive after being blown from the mainland [Figure 1, see @Zalucki2004; @Pierce2014; @Hemstrom2022a]. Monarchs are not known to be migratory on any Pacific islands, and no migratory behavior was observed in Australia until the 1930s, when non-reproductive overwintering aggregations were observed in northern New South Wales [NSW, see @James2019]. These and other individuals were later shown to migrate hundreds of kilometers each year to their wintering grounds from more southerly, inland locations in NSW [@James2019;@jamesInductionReproductiveDormancy1983]. Thus, more than 90 years (and hundreds of generations) after expanding out of North America, and more than 90 years without any evidence for seasonal migration, migration re-emerged in these populations. Understanding how this happened could provide crucial context around the "extinction" of migration in monarchs and other species.
 
-To better understand how migration re-emerged in Australian monarchs, we studied continuously breeding monarch populations in Queensland. While these populations do not experience substantial seasonal fluctuations in resource availability, and thus do not migrate [@James2019], recent work has shown that reproductive diapause can be induced in some, *but not all* individuals from these populations if they are exposed to a reduction in photoperiod during development [@Freedman2018], a trait that these non-migratory populations do not display in the wild. In brief, reproductive diapause, where individuals delay their reproductive maturation, is a critical and tightly linked phenotype for migratory monarchs because it allows them to invest more heavily in lipid storage and increase their average longevity [@Herman2001]. Like other migratory behaviors, diapause is initiated by changes in day length, temperature, and other seasonal fluctuations [@Goehring2002;@iiamsPhotoperiodicClockRegulation2019] and is thought to be directly controlled by juvenile hormone (JH) concentration during development [@GreenII2019;@Herman2001]. 
+To better understand how migration re-emerged in Australian monarchs, we studied continuously breeding monarch populations in Queensland. While these populations do not experience substantial seasonal fluctuations in resource availability, and thus do not migrate [@James2019], recent work has shown that reproductive diapause can be induced in some, *but not all* individuals from these populations if they are exposed to a reduction in photoperiod during development [@Freedman2018], a trait that these non-migratory populations do not display in the wild. In brief, reproductive diapause, where individuals delay their reproductive maturation, is a critical and fitness-relevant phenotype for migratory monarchs because it allows them to invest more heavily in lipid storage and increase their average longevity [@Herman2001;@denlingerInsectDiapauseRich2023;@numataDiapauseUnivoltineSemivoltine2023]. Like other migratory behaviors, diapause is initiated by changes in day length, temperature, and other seasonal fluctuations [@Goehring2002;@iiamsPhotoperiodicClockRegulation2019;@saundersDormancyDiapauseRole2020] and is thought to be directly controlled by juvenile hormone (JH) titers during development [@GreenII2019;@Herman2001;@denlingerInsectDiapauseRich2023]. 
 
-Diapause control is also an phenotype of interest because it highlights a theoretical dichotomy in the types of genes that are associated with migratory life histories: migratory genes can either be directly causal, proximate migratory genes that are required prior for migration to occur (such as genes that control diapause, directional motion, and navigation), or facultative migratory genes that increase fitness in already migratory populations but are not strictly required for migratory behavior to occur (such as genes that change wing or limb shapes, respiration, lipid storage, and muscle strength). For a newly migratory population, like monarchs in Queensland, we would expect to the strongest genetic associations with migration to occur in proximate migratory genes that cause traits like diapause rather than facultative genes which may take longer to increase in frequency following the evolution of migratory behavior.
+While diapause is one of many migration-assoicated traits (such as wing morphology, resting and flight metabolic rates, lifespan, and lipid storage), it in particular is linked extremely tightly to migration. Nearly all wild migratory monarch females are in diapause: previous work has found that between 82 and 100% of female migratory monarch butterflies are non-reproductive [@majewskaExposureNonNativeTropical2019; @satterfieldMigratoryMonarchsThat2018a; @Goehring2002; @hermanStudiesAdultReproductive1981]. In contrast, previous rearing trials under typical North Americam summer breeding conditions in have yielded nearly 100% reproductively mature females [@Goehring2002]. These trends are less pronounced in males monarchs, which are therefore not the focus of this study [@majewskaExposureNonNativeTropical2019; @satterfieldMigratoryMonarchsThat2018a]. Given this, diapause serves as an excellent proxy for migration and has been used as such or as a focal trait for the study of migration in monarchs in many studies [see @satterfieldMigratoryMonarchsThat2018; @Goehring2002; @Tenger-Trolander2019; @GreenII2019; @majewskaExposureNonNativeTropical2019; @Freedman2018, for example]. 
 
-The variance in diapause induction in Queensland monarchs allows for a direct search for genetic associations with this trait and thus for an examination of the genetic underpinnings of the re-evolution of migration in Australian monarchs. Here, we used reduced representation sequencing to search for genes associated with migratory diapause in Queensland monarch butterflies. We found one strongly associated locus co-located with an E3 ubiquitin ligase gene. This gene has been previously identified as associated with intermolt transitions in silk moths (Bombyx mori), which is controlled by the same major hormone (juvenile hormone, hereafter JH) as reproductive diapause. This gene had not previously been identified as associated with migration in North American monarch butterflies, and we did not find that any previously identified migratory genes were associated with diapause in our study. 
-
+The variance in diapause induction in Queensland monarchs allows for a direct search for genetic associations with this trait and thus for an examination of the genetic underpinnings of the re-evolution of migration in Australian monarchs. Here, we used reduced representation sequencing to search for genes associated with migratory diapause in Queensland monarch butterflies. We found three strongly associated loci, one of which co-located with spectrin beta chain protein involved in actin filament binding, a homolog of which is known to be expressed in silkworm ovaries. This gene had not previously been identified as associated with migration in North American monarch butterflies, and we did not find that any previously identified migratory genes were associated with diapause in our study. 
 
 # Materials and Methods
-## Sample Collection, Incubation, and Phenotyping
+
+## Background
+
+Although the ancestral range of monarch butterflies is believed to be in North and Central America, they have fairly recently expanded into South America and the Caribbean, and very recently to several locations throughout the Atlantic and Pacific [@oplerFieldGuideWestern1999; @Zhan2014; @haegerMonarchsAtlanticOcean2015]. In North America, the species is well known for its unique, multi-generational migratory life history wherein individuals dispersing northward in the spring do so over three to four generations and then return to their wintering grounds in a single step [@malcolmSpringRecolonizationEastern1993; @cockrellTimeTemperatureLatitudinal1993].
+
+In Southern Florida, the Caribbean, Central America, South America, and throughout most of their introduced range monarchs are non-migratory [@dockxDirectionalStabilizingSelection2007;@altizerPopulationsMonarchButterflies2010;@northMonarchButterflyBiology2004]. Residency in these populations appears to be a derived trait which has arisen multiple times after the species' split from *Danaus erippus*, their closest extant relative [@Zhan2014]. The Pacific expansion of monarchs is relatively recent, with historical records indicating that they established first in Hawaii in the 1840s, likely as a result of individuals blown in during storm events that were able to survive on recently introduced milkweeds [@clarkeMonarchsAustraliaWinds2004; @Pierce2014]. Genetic evidence is consistent with an introduction to Hawaii during this time period [@Hemstrom2022a]. As described above, they then spread across the Pacific and reached Australia in approximately 1871 [@Zalucki2004], and were recorded migrating again in Australia sometime in the 1930s [see Figure 1, @James2019].
+
+## Sample collection, incubation, and phenotyping
 
 We collected 22 female monarch butterflies from Pinjarra Hills, Queensland, Australia (27°32′26.7″S, 152°54′22.7″E) between the 5th and 9th of July 2018. Individuals in all life stages were present at the field site during our sample collections, consistent with continuous, year-round breeding. We enclosed each of these 22 females individually on either *Asclepias curassavica*  or *Gomphocarpus sp.* host plants found on-location and subsequently successfully collected eggs produced by 21 of them. While these eggs represent 21 total maternal families, each may consist of multiple groups of half-siblings since females may mate multiple times and lay clutches with mixed parentage. We did not remove *Ophryocystis elektroscirrha* (a protozoan parasite) spores, which were uniformly present on our eggs [consistent with previous reports from this location, see @Freedman2018].
 
 We then incubated all eggs using the same incubators and following the "decreasing photoperiod" experimental scheme of Freedman et al. [-@Freedman2018] in order to induce reproductive diapause and ensure that our data could be later pooled with that produced in the earlier study. Briefly, larvae were reared at a constant temperature of 28°C under a photoperiod regime that declined from 14:10 L:D to 12:12 L:D over the course of 30 days (Δ4 mins/day). We released all male butterflies following emergence, since phenotyping diapause in male monarchs can be challenging due to the difficulty in extracting and weighing the ejaculatory duct, seminal vesicle, and accessory glands, which are likely the best indicator of male reproductive development [@Goehring2002]. This left us with a total of `r nrow(old.data)` females from `r length(unique(na.omit(old.data$fam)))` maternal families.
 
-We assessed reproductive diapause by determining the degree of oocyte development in each of our adult female butterflies. We observed that individuals fell into two clearly defined bins: `r sum(old.data$Phenotype == "C", na.rm = TRUE)` out of `r nrow(old.data)` had fully developed, chorionated eggs (visible ridges along the exterior of the egg), while `r sum(old.data$Phenotype != "C", na.rm = TRUE)` females did not. Of these latter individuals, a few (`r sum(old.data$Phenotype == "I", na.rm = TRUE) + sum(old.data$Phenotype == "N", na.rm = TRUE)`) had no yolk in their eggs whatsoever, but most had some degree of yolking. Since vitellogenesis generally only begins to a substantial degree after eclosion in monarchs [@Pan1976], we called any individuals with more than a small amount of yolking in their eggs as reproductively mature (N = `r sum(sample.meta$likely_pheno[sample.meta$year == 2018] == "M", na.rm = TRUE)` and `r sum(sample.meta$likely_pheno[sample.meta$year == 2018] == "R", na.rm = TRUE)` for reproductively immature and mature individuals, respectively, images of egg development in each individual are available from the authors upon request). Wings and bodies from all individuals were preserved in dry coin envelops or 95% ethanol, respectively. We note that while we refer to the postponement of reproductive development under otherwise suitable conditions as diapause, other authors refer to this process in monarchs as oligopause [@jamesOvarianDormancyDanaus1982] or quiescence, since diapause implies an extended refractory period.
+We assessed reproductive diapause by determining the degree of oocyte development in each of our adult female butterflies after 70 degree days of development, which is sufficient time for females to develop mature ovaries under normal summer conditions [@zaluckiEffectsAgeWeather1981]. We observed that individuals fell into several defined bins: `r sum(old.data$Phenotype == "C", na.rm = TRUE)` out of `r nrow(old.data)` had fully developed, chorionated eggs (visible ridges along the exterior of the egg), while `r sum(old.data$Phenotype != "C", na.rm = TRUE)` females did not. Of these latter individuals, a few (`r sum(old.data$Phenotype == "I", na.rm = TRUE) + sum(old.data$Phenotype == "N", na.rm = TRUE)`) had no yolk in their eggs whatsoever, but most had some degree of yolking. Since vitellogenesis generally only begins to a substantial degree after eclosion in monarchs [@Pan1976], we classified individuals as either fully reproductively mature (with chorionated eggs), partially reproductively mature (with more than a tiny amount of yolking), or reproductively immature (with no or only very small amounts of yolking). Images of egg development in each individual are available online (see Data Availability, Figure 2a). Wings and bodies from all individuals were preserved in dry coin envelops or 95% ethanol, respectively. We note that while we refer to the postponement of reproductive development under otherwise suitable conditions as diapause, other authors refer to this process in monarchs as oligopause [@jamesOvarianDormancyDanaus1982] or quiescence, since diapause implies an extended refractory period that we did not test for.
 
-We supplemented these samples with preserved, dry butterfly wings from each of the "decreasing photoperiod" female individuals previously scored for reproductive development by Freedman et al. [-@Freedman2018], constituting an additional `r sum(sample.meta$year == 2016, na.rm = TRUE)` total female butterflies from `r length(unique(meta.micah$Female_Line[meta.micah$Treatment == "Decreasing"]))` maternal families, of which `r sum(sample.meta[sample.meta$year == 2016,]$likely_pheno == "M", na.rm = TRUE)` and `r sum(sample.meta[sample.meta$year == 2016,]$likely_pheno == "R", na.rm = TRUE)` were scored by the authors as reproductively immature and mature, respectively. Together, these two datasets contained `r length(na.omit(sample.meta$likely_pheno))` monarch butterflies, of which `r sum(sample.meta$likely_pheno == "M", na.rm = TRUE)` and `r sum(sample.meta$likely_pheno == "R", na.rm = TRUE)` were reproductively immature and mature, respectively (see Table 1).
+We supplemented these samples with preserved, dry butterfly wings from each of the "decreasing photoperiod" female individuals previously scored for reproductive development by Freedman et al. [-@Freedman2018], constituting an additional `r sum(sample.meta$year == 2016, na.rm = TRUE)` total female butterflies from `r length(unique(meta.micah$Female_Line[meta.micah$Treatment == "Decreasing"]))` maternal families, which were scored by the authors as reproductively chorionated, yolked, and unyolked, respectively. Together, these two datasets contained `r length(na.omit(sample.meta$quant_pheno))` monarch butterflies from `r length(unique(na.omit(sample.meta$MotherID)))` maternal families (see Table 1).
 
 
-## Sequencing and Genotyping
-We removed and extracted DNA from one leg from each of our samples collected in 2018 or from a wing base from each of the samples collected by Freedman et al [-@Freedman2018] using the magnetic bead protocol of Ali et al [-@Ali389]. We quantified the resulting DNA on a BioTek Instruments FLx800 Fluorescence Reader using Thermo Fisher Scientific Quant-iT PicoGreen dsDNA Reagent, then prepared Restriction Associated Digest (RAD) libraries using the Pst1 restriction enzyme according to Ali et al [-@Ali389]. We sequenced these 150 bp paired-end sequencing libraries using an Illumina Hi-Seq 4000.
+## Sequencing and genotyping
+We removed and extracted DNA from one leg from each of our samples collected in 2018 or from a wing base from each of the samples collected by Freedman et al [-@Freedman2018] using the magnetic bead protocol of Ali et al. [-@Ali389]. We quantified the resulting DNA on a BioTek Instruments FLx800 Fluorescence Reader using Thermo Fisher Scientific Quant-iT PicoGreen dsDNA Reagent, then prepared Restriction Associated Digest (RAD) libraries using the Pst1 restriction enzyme according to Ali et al. [-@Ali389]. We sequenced these 150 bp paired-end sequencing libraries using an Illumina Hi-Seq 4000.
 
-We aligned the resulting raw sequence data to the v4 monarch butterfly genome assembly [@Gu2019] using the mem algorithm of the Burrows-Wheeler Aligner [@Li2009a]. We then filtered out PCR duplicates, improperly paired, or poorly mapped reads using SAMtools [@Li2009]. We then called gentoypes using the ANGSD software package with the following parameters: -doMajorMinor 1 (determine major and minor alleles using a genotype likelihood approach),  -doMaf 2 (determine minor allele frequencies), -SNP_pval 1e-8 (keep only loci with a SNP p-value $\le 1 \times 10^{-8}$), -doGeno 4 (call genotypes), -doPost 2 (calculate genotype posterior probabilities using a uniform prior), -postCutoff 0.95 (keep only loci where the highest genotype posterior probability $\ge 0.95$), -minQ 20 (keep only loci with a sequencing quality $\ge 20$), -minMapQ 20 (keep only loci with a mapping quality $\ge 20$), -minInd 130 (keep only loci sequenced in at least 130 individuals), and -minMaf 0.05 (keep only loci with a minor allele frequency $\ge 0.05$). 
+We aligned the resulting raw sequence data to the "MEX_DaPlex" monarch butterfly genome assembly [@ranzNovoTranscriptionalAtlas2021] using the mem algorithm of the Burrows-Wheeler Aligner [@Li2009a]. We then filtered out PCR duplicates, improperly paired, or poorly mapped reads using SAMtools [@Li2009]. For some downstream pedigree reconstruction, we then called genotypes using the ANGSD software [@Korneliussen2014] package with the following parameters: -doMajorMinor 1 (determine major and minor alleles using a genotype likelihood approach),  -doMaf 2 (determine minor allele frequencies), -SNP_pval 1e-8 (keep only loci with a SNP p-value $\le 1 \times 10^{-8}$), -doGeno 4 (call genotypes), -doPost 2 (calculate genotype posterior probabilities using a uniform prior), -postCutoff 0.95 (keep only loci where the highest genotype posterior probability $\ge 0.95$), -minQ 20 (keep only loci with a sequencing quality $\ge 20$), -minMapQ 20 (keep only loci with a mapping quality $\ge 20$), -minInd 130 (keep only loci sequenced in at least 130 individuals), and -minMaf 0.05 (keep only loci with a minor allele frequency $\ge 0.05$). 
 
 <!-- we removed poorly seqeuenced individuals later in the pipeline, so these numbers are actually the final numbers. Not sure if that matters, but can fix. -->
 
-## Statistical Analysis
+## Statistical analysis
+We first confirmed the parentage of our samples using the Colony2 program, assuming polygamous, random mating [@Jones2010]. In order to determine the degree to which diapause status was biased between families, we fit a basic linear model in R version 4.2.2 [@rcoreteamLanguageEnvironmentStatistical2022] using phenotypic status as the response variable and maternal family as a fixed effect. Phenotypic status was coded as 0, 1, or 2 for reproductively immature, partially mature, or mature, respectively. We used an ANOVA test in R to determine if maternal ID significantly improved model fit. To determine the expected phenotypic distribution for each family sorted by mean reproductive rank under a null distribution, we randomly permuted individuals between families 10,000 times and then ranked each family for reproductive score.
 
+We conducted a Genome-Wide Association Study (GWAS) in order to determine if any loci were significantly associated with reproductive status. Since our data was generally of low coverage, we used a frequency test in ANGSD [@Korneliussen2014] based on genotype likelihoods rather than called genotypes and thus increase the effective number of loci we were able to analyze. We used the following parameters: -doMajorMinor 1, -SNP_pval 1e-12, -GL 1 (calculate genotype likelihoods using the SAMtools approach), -minQ 20, -minMapQ 20, -minInd 102 (50% of the individuals with called phenotypes), -minMaf 0.05, -doMaf 2 (assume a known minor allele), -doAsso 1 (do an association test using a frequency test), and -yquant coding phenotypic status as above. Since our samples were composed of many groups of full and half-siblings and came from two genetically different years, we also used the -cov argument and supplied the first 20 principal components derived from PCAngsd [@meisnerInferringPopulationStructure2018], which we ran using the default parameters using genotype likelihoods derived from ANGSD using the same parameters plus -doGlf 2 to save genotype likelihoods. We calculated p-values for the resulting likelihood ratio test score and corrected those values using the false discovery rate approach of Benjamini and Hochberg [-@benjaminiControllingFalseDiscovery1995a] in R. 
 
-In order to determine if any genomic regions were significantly associated with reproductive diapause, we used the snpR R package to filter out loci significantly out of Hardy-Weinburg Equilibrium ($p \le 0.000001$) in either year in order to help remove any paralogous loci and interpolated missing data by conducting binomial draws at missing genotypes using the minor allele frequencies at those loci [@hemstromSnpRUserFriendly2023]. To assess the basic level of genetic diversity amongst our samples, we then calculated the average number of pairwise differences ($\pi$), observed heterozygosity ($H_{O}$), and $F_{IS}$ according to Weir and Cockerham [-@Weir1984] for all of our samples and for each year independently using snpR [@hemstromSnpRUserFriendly2023]. We also calculated $F_{ST}$ according to Weir and Cockerham [-@Weir1984] between sample years and between both sample year and reproductive phenotype jointly [@hemstromSnpRUserFriendly2023]. We bootstrapped a significance level for $F_{ST}$ by bootstrapping individuals among populations with replacement 100 times. To determine if there was any substantial unexpected genetic structuring (other than family groups) in our samples, we conducted a Principal Component Analysis using snpR [@hemstromSnpRUserFriendly2023]. Since some individuals escaped their rearing dishes (but not the incubator) during rearing, we also confirmed the parentage of our samples using the Colony2 program, assuming polygamous, random mating [@Jones2010].
+We constructed quantile-quantile and Manhattan plots of the resulting p-values using snpR [@hemstromSnpRUserFriendly2023] and identified candidate adaptive genes as those co-locating within 50kb of any SNPs with a corrected $p \le 0.05$. Since the "MEX DaPlex" reference genome uses RefSeq gene IDs but most monarch studies use the monarch official gene set IDs, we used BLAST [@Altschul1990] to identify official gene set genes with protein sequences matching those of the RefSeq genes we identified via the built-in tool on MonarchBase [@zhanMonarchBaseMonarchButterfly2013]. 
 
-In order to determine the degree to which diapause status was biased between families, we constructed a Fisher's exact test for independence using 2000 simulations in R version 4.2.2 [@rcoreteamLanguageEnvironmentStatistical2022]. We then conducted a Genome-Wide Association Study (GWAS) in order to determine if any loci were significantly associated with reproductive status. Since our samples were composed of many groups of full and half-siblings and came from two genetically different years, we used the GMMAT R package to conduct a population and family structure-corrected GWAS [@Chen2020; @Chen2016]. We visualized the results by constructing a Manhattan plot using snpR [@hemstromSnpRUserFriendly2023]. We identified the genes underlying any candidate regions by hand using the MonarchBase genome browser online tool [@Zhan2013].
-
-To determine if diapause is part of a generalized migratory syndrome in Australia we also briefly re-analyzed the connection between reproductive status and wing morphology in our 2016 samples [@Freedman2018]. To determine if wing shape or size was correlated with reproductive status, we fit a pair of linear mixed effect models with either with wing shape or size as response variables, the number of yolked oocytes as a fixed effect, and maternal family as a random effect using the R package nlme [@Pinheiro2007].
+To determine if diapause is part of a generalized migratory syndrome in Australia, we also briefly re-analyzed the connection between reproductive status and wing morphology in our 2016 samples [@Freedman2018]. To determine if wing shape or size was correlated with reproductive status, we fit a pair of linear mixed effect models with either with wing shape or size as response variables, the number of yolked oocytes as a fixed effect, and maternal family as a random effect using the R package nlme [@Pinheiro2007].
 
 # Results
 
-## Background
-Although the ancestral range of monarch butterflies is believed to be in North and Central America, they have fairly recently expanded into South America and the Caribbean, and very recently to several locations throughout the Atlantic and Pacific [@oplerFieldGuideWestern1999; @Zhan2014; @haegerMonarchsAtlanticOcean2015]. In North America, the species is well known for its unique, multi-generational migratory life history wherein individuals dispersing northward in the spring do so over three to four generations and then return to their wintering grounds in a single step [@malcolmSpringRecolonizationEastern1993; @cockrellTimeTemperatureLatitudinal1993].
+## Phenotypic results and sequencing
 
-In Southern Florida, the Caribbean, Central America, South America, and throughout most of their introduced range monarchs are non-migratory [@dockxDirectionalStabilizingSelection2007;@altizerPopulationsMonarchButterflies2010;@northMonarchButterflyBiology2004]. Residency in these populations appears to be a derived trait which has arisen multiple times after the species' split from *Danaus eripus*, their closest extant relative [@Zhan2014]. The Pacific expansion of monarchs is relatively recent, with historical records indicating that they established first in Hawaii in the 1840s, likely as a result of individuals blown in during storm events that were able to survive on recently introduced milkweeds [@Zalucki2004; @Pierce2014]. Genetic evidence is consistent with an introduction to Hawaii during this time period [@Hemstrom2022a]. As described above, they then spread across the Pacific and reached Australia in approximately 1871 [@Zalucki2004], and were recorded migrating again in Australia sometime in the 1930s [see Figure 1, @James2019].
+Of the `r length(na.omit(sample.meta$quant_pheno))` total adult female monarch butterflies reared in both these studies and by Freedman et al. [-@Freedman2018], `r sum(sample.meta$quant_pheno == 2, na.rm = TRUE)`, `r sum(sample.meta$quant_pheno == 1, na.rm = TRUE)`, and `r sum(sample.meta$quant_pheno == 0, na.rm = TRUE)` were classified as reproductively fully mature, partially mature, and immature, respectively. We sequenced a total of `r prettyNum(total_reads, big.mark = ",")` reads across all individuals, `r round(percent_mapped, 3)*100`% of which mapped to the monarch reference genome and `r round(percent_retained, 3)*100`% of which were maintained after filtering. From this, we called genotypes and likelihoods for 179,735 and `r prettyNum(nrow(adat_quant),big.mark=",",scientific=FALSE)` SNP loci, respectively.
 
+## Genetic basis of diapause
+Maternal family strongly improved model fit (ANOVA, $p < 0.001$, see Figure 2b). From a total of `r prettyNum(nrow(adat_quant),big.mark=",",scientific=FALSE)`SNPs used in the association test, we identified three genomic regions which were significantly associated with reproductive development after false discovery rate correction on chromosomes 17, 19, and 29 (Figure 2d). A total of 26 genes were within 50kb of these regions (Table S1), one of which (LOC116776761/DPOGS204613)  was located directly under the significantly associated SNPs on chromosome 29 (minimum p-value = `r round(min(adat_quant$fdr), 3)` (Figure 3). No annotated genes were directly under the peaks of association on chromosomes 17 and 19 (Figure 3).
 
-## Sequencing results
-We incubated female monarch butterflies from a total of `r length(unique(na.omit(old.data$fam)))` clutches of eggs produced by females collected from a continuously-breeding population from southern Queensland, Australia under a decreasing photoperiod following the methods of Freedman et al. [-@Freedman2018]. The resulting `r nrow(old.data)` females were phenotyped for oocyte development as a proxy for diapause status. Butterflies were phenotyped as reproductively mature (n = `r sum(sample.meta$likely_pheno[sample.meta$year == 2018] == "R", na.rm = TRUE)` not in diapause and thus with a non-migratory phenotype) or as reproductively immature (n = `r sum(sample.meta$likely_pheno[sample.meta$year == 2018] == "M", na.rm = TRUE)` in diapause and thus with a migratory phenotype). We sequenced these individuals along with an additional `r sum(sample.meta$year == 2016, na.rm = TRUE)` butterflies raised under very similar conditions by Freedman et al. [-@Freedman2018], of which `r sum(sample.meta[sample.meta$year == 2016,]$likely_pheno == "R", na.rm = TRUE)` and `r sum(sample.meta[sample.meta$year == 2016,]$likely_pheno == "M", na.rm = TRUE)` were scored in that study as reproductively mature and immature, respectively.
-
-We sequenced a total of 417,846,352 reads across all individuals, 98.8% of which mapped to the monarch reference genome and 244,443,414 of which were maintained after filtering (1,158,500 per sample, on average), encompassing `r prettyNum(L,big.mark=",",scientific=FALSE)` total sequenced bases. From this, we called `r prettyNum(nsnps(dat),big.mark=",",scientific=FALSE)` individual SNPs following filtering.
-
-
-## Diversity and Structuring
-
-Genetic diversity levels were extremely similar between our two years ($\pi = 5.21 \times 10^{-8}$ and $5.23 \times 10^{-8}$ and $H_{o} = 5.28 \times 10^{-8}$ and $5.29 \times 10^{-8}$ for 2016 and 2018, respectively). Each year had a slight heterozygote excess ($F_{IS}$ = `r round(diversity$weighted_mean_fis[2], 3)` and `r round(diversity$weighted_mean_fis[3],3)` for 2016 and 2018, respectively), although that excess was lower if all samples were considered jointly ($F_{IS}$ = `r round(diversity$weighted_mean_fis[1], 3)`). Pairwise $F_{ST}$ between the two years was small but significant (`r round(fst$weighted_mean_fst[1], 3)`, $p =$ `r round(fst$weighted_mean_fst_p[1], 3)`). We found no significant genetic divergence between the two sample years on either the PCA or the NGSadmix results, with clustering instead driven by family, although we did find that three of our 2018 maternal families were substantially different from all other samples on our first two PC axes (Figure 2).
-
-## Genetic Basis of Diapause
-
-Diapause status was strongly biased by maternal family (Fisher's Exact Test, $p < 0.001$, see Figure 3a). We identified one small region of chromosome 11 (between positions ~5,589,000 to ~5,620,000) containing many loci associated with diapause status well beyond the background level of association, including three SNPs from two different RAD-tags that had a $p$-value  $\le 5 \times 10^{-5}$ (Figure 3b). This region overlaps the gene DPOGS208560 (LOC116768596), an E3 ubiquitin ligase, and was still strongly associated with diapause if only the 2018 butterflies alone were examined. We also identified one locus with a $p$-value  $\le 5 \times 10^{-5}$ on chromosome 16, but there were no other significantly associated loci nearby.
-
-We found that wing elongation was significantly negatively correlated with the number of yolked oocytes in Freedman et al.'s [-@Freedman2018] earlier study ($p$ = `r round(summary(mod_AsRa)$tTable[2,5], 3)`) after accounting for maternal family. Wing size was also negatively correlated with the number of yolked oocytes, but not significantly so after accounting for maternal family ($p$ = `r round(summary(mod_Area)$tTable[2,5], 3)`).
+We found that wing length was significantly negatively correlated with the number of yolked oocytes in Freedman et al.'s [-@Freedman2018] earlier study ($p$ = `r round(summary(mod_AsRa)$tTable[2,5], 3)`) after accounting for maternal family. Wing shape was also negatively correlated with the number of yolked oocytes, but not significantly so after accounting for maternal family ($p$ = `r round(summary(mod_Area)$tTable[2,5], 3)`).
 
 # Discussion
 
@@ -461,49 +580,46 @@ We found that wing elongation was significantly negatively correlated with the n
 <!--   What this means for the persistence of migration in monarchs -->
 <!--   What this means for the persistence and adaptability of migration in general. -->
 
-## Re-emergence of Diapause Control in Australian Monarch Butterflies
+## Evolution of diapause control in Australian monarchs
 
-We found that a region on Chromosome 11 containing the gene DPOGS208560 was strongly associated with diapause initiation in Monarch Butterflies in Queensland, Australia. This gene is an E3 ubiquitin ligase, a class of proteins broadly involved with proteosomal degradation of diverse substrates, including the circadian clock protein CRY2 [@xingSCFFBXL3UbiquitinLigase2013; @yooCompetingE3Ubiquitin2013], which is known to play a role in monarch photoperiodism including migratory responses to declining photoperiod [@iiamsPhotoperiodicClockRegulation2019]. Interestingly, a predicted homolog of this gene in silk moths has been previously found to be differentially expressed during larval molt-intermolt transitions [@Hu2016], which are generally controlled by fluctuations in JH and ecdysone [@Jindra2013]. JH is known to be a major driver of reproductive development and diapause in monarchs [@Herman2001;@GreenII2019]. Taken together, it is not surprising that DPOGS208560 may participate in diapause control in monarchs. 
+We found that a region on Chromosome 29 containing the gene DPOGS204613 (homologous to the gene *Karst* in *Drosophila* and hereafter referred to as such) was strongly associated with diapause initiation in monarch butterflies in Queensland, Australia (Figure 3c). According to the most recent annotation [@ranzNovoTranscriptionalAtlas2021], *Karst* codes for a spectrin beta chain protein involved in actin filament binding. *Karst* has not been previously identified as associated with migratory life history variation in North American monarchs. Specifically, *Karst* was not among the 536 genes located in regions of the genome found to be significantly associated with contrasts between migration and residency in North and South American, Pacific, and European populations by Zhan et al. [-@Zhan2014]. 
 
-What is surprising, however, is that this gene has not been previously identified as a candidate migration gene in monarchs. Specifically, DPOGS208560 was not among the 536 genes located in regions of the genome found to be significantly associated with contrasts between migration and residency in North and South American, Pacific, and European populations by Zhan et al. [-@Zhan2014], nor does it overlap with the genes suggested to be involved in photoperiodic responses by Iiams et al. [-@iiamsPhotoperiodicClockRegulation2019] or the genes associated with diapause termination in western North American monarchs [@GreenII2019]. There are at least two distinct explanations for this difference: 1) the DPOGS208560 variant we observed is either present in North America but was not previously recognized as associated with migration or 2) is the result of a new mutation which occurred in Australian monarchs. The former case would imply that this allele was either maintained as monarchs passed through repeated population bottlenecks during their Pacific expansion or was secondarily re-introduced by immigrant individuals from North America (which would have likely been anthropogenic in origin).
+The involvement of *Karst* in migratory diapause initiation, however, is not surprising. Juvenile hormone mediated actin contraction is known to be involved in oocyte formation [@luoJuvenileHormoneSignaling2021], and mutations in *Karst* are known to cause serious issues during oogenesis in *Drosophila* [@zarnescuApicalSpectrinEssential1999]. The involvement of *Karst* in oocyte development is likely conserved in Lepidoptera: a predicted homolog of *Karst*, BGIBMGA012171, has been identified as an ovary-specific expressed protein in silkworms (*Bombyx mori*) [@chenProteomeAnalysisSilkworm2013a]. More directly, while it does not overlap with any of genes identified as involved in photoperiodic responses by Iiams et al. [-@iiamsPhotoperiodicClockRegulation2019], *Karst* has been observed to be differentially expressed during diapause termination in western North American monarchs [@GreenII2019].
 
-Since we observed that *only*  the DPOGS208560 gene was associated with diapause in Australian monarchs, it seems unlikely that a secondary re-introduction of migratory monarch butterflies from North America could explain the re-emergence of migratory behavior in Australia, since there would be no reason for other known migratory associated genes to have not also made the jump back across the Pacific. Unfortunately, the SNP loci that we located are not perfectly associated with diapause since only `r (gtable[1,1]/gtable[3,1])* 100` % of individuals phenotyped as not in diapause carried the associated allele (compared to `r (gtable[1,2]/gtable[3,2])*100` % of individuals phenotyped as reproductively mature) and are likely to only be in linkage with any causal variation rather than the causal variants themselves. Our work cannot therefore currently delineate between the other two options (maintenance of variance at DPOGS208560 during the Pacific crossing or a new mutation). If the direct, causal loci were to be identified, it would then be possible to determine which gene versions are present in North America or across the Pacific and thus determine the origin of the DPOGS208560 diapause variant in Australia.
+There are at least two distinct explanations novel involvement of *Karst* in diapause initiation in Australian monarchs: 1) the diapause-associated *Karst* variant we observed is either present in North America but was not previously recognized as associated with migration or it 2) is the result of a new mutation which occurred in Australian monarchs. The former case would imply that this allele was either maintained as monarchs passed through repeated population bottlenecks during their Pacific expansion or was secondarily re-introduced by immigrant individuals from North America (which would have likely been anthropogenic in origin).
 
-Note that it is unlikely that DPOGS208560 alone controls diapause induction under declining day-length in Australian monarchs. While our study features many *individuals*, it features only 32 maternal families and thus far fewer independent samples. Our power is therefore limited, and it is entirely likely that we failed to detect many causal loci for diapause onset. This is consistent with the fact that our top associated SNP that overlaps DPOGS208560 was not perfectly associated with diapause, although that may also be due to imperfect linkage with the actual (and possibly un-sequenced) causal variants. Additional studies with larger sample sizes are therefore still needed to better understand the mechanisms underlying diapause induction in Australian monarch butterflies.
+It seems unlikely that a secondary re-introduction of migratory monarch butterflies from North America could explain the re-emergence of migratory behavior in Australia, since there would be no reason for known migratory associated genes to have not also made the jump back across the Pacific. Ideally, it would be possible to delineate between the other two options (maintenance of variance at *Karst* during the Pacific crossing or a new mutation) by comparing the variance in *Karst* in Australia to that elsewhere, but that is not currently possible given that our data is from reduced-representation sequencing and we cannot therefore be confident that we have sequenced the causal loci. Further work that tests for a similar association between *Karst* genotypes and diapause initiation in North American monarchs would help to resolve whether Australian monarchs carry novel or ancestral migration-associated genetic variation at the *Karst* locus. 
 
-## Proximate vs Facultative Migratory Alleles
+Note that it is unlikely that *Karst* alone controls diapause induction under declining daylength in Australian monarchs. We detected two other strong associations with diapause, but it is not clear to which genes these outliers correspond given the lack of resolution in this study (Figure 3a-b). There are a few potential reasons for this: first, it is possible that the causal variants are located in transcription factor binding cites or other promoter regions which are not well annotated. Alternatively, we may not have sequence data for the actual causal variants with which our loci are in partial linkage disequilibrium. Higher resolution sequencing could again help clarify the causal genes for these regions.
 
-<!-- work point for edits -->
+Additionally, while our study features many *individuals*, it features only 32 maternal families and thus far fewer independent samples. Our power is therefore limited, and it is entirely likely that we failed to detect many causal loci for diapause onset.  Additional studies with larger sample sizes are therefore still needed to better understand the mechanisms underlying diapause induction in Australian monarch butterflies.
 
-Regardless, it is interesting that DPOGS208560 had not been previously noted as associated with migration in monarch butterflies. In their 2014 study, Zhan et al. generally focused their discussion of migratory genetics on Collagen IV $\alpha$-1, one of three genes they found that were strong outliers for association with migration. This gene is involved in muscle functioning in insects [@Schnorrer2010], and Zhan et al. hypothesized that divergence at this gene was driven by selection for increased wing strength and muscle efficiency to facilitate long-distance migration. While they mentioned that the remaining significantly associated genes were enriched for the "morphogenesis, neurogenesis, and extracellular matrix/basement membrane" functional terms, they were not otherwise discussed (DPOGS208560 does not have any of these functional terms). It is possible that DPOGS208560 also contributes to diapause and migration in butterflies outside of Australia, but that the quantitative effect of other genes (a product of the effect sizes of the migratory alleles and their frequencies) dwarfs that of DPOGS208560, thus concealing the relative impact of the latter gene. It is worth noting, however, Zhan et al. (2014) also noted that the FBXO45 gene is located adjacent to Collagen IV $\alpha$-1 and was thus also associated with migration. Although Zhan et al. (2014) did not discuss the potential role of FBXO45 in migration and focused instead on Collagen IV $\alpha$-1, F-box proteins are part of SCF complexes that, along with E3 ubiquitin ligases such as DPOGS208560, are likely involved in processing circadian clock proteins [@grimaFboxProteinSlimb2002; @xingSCFFBXL3UbiquitinLigase2013].
+Regardless, it is interesting that *Karst* had not been previously noted as associated with migration in monarch butterflies. In their 2014 study, Zhan et al. generally focused their discussion of migratory genetics on Collagen IV $\alpha$-1, one of three genes they found that were strong outliers for association with migration. This gene is involved in muscle functioning in insects [@Schnorrer2010], and Zhan et al. hypothesized that divergence at this gene was driven by selection for increased wing length and muscle efficiency to facilitate long-distance migration. While they mentioned that the remaining significantly associated genes were enriched for the "morphogenesis, neurogenesis, and extracellular matrix/basement membrane" functional terms, they were not otherwise discussed (*Karst* does not have any of these functional terms). It is possible that *Karst* also contributes to diapause and migration in butterflies outside of Australia, but that the quantitative effect of other genes (a product of the effect sizes of the migratory alleles and their frequencies) dwarfs that of *Karst*, thus concealing the relative impact of the latter gene.
 
-As mentioned above, we did not identify loci near the Collagen IV $\alpha$-1 gene as associated with diapause, despite the fact that we did sequence several nearby loci. This is surprising, since although monarchs in Australia (like other non-migratory populations), have substantially smaller and shorter wings than their migratory counterparts [@Freedman2020], we also found from re-analyzing data from Freedman et al.'s (2018) study that wing shape is significantly correlated with reproductive development in Australian monarchs. This implies that wing morphology is still a part of the correlated migratory syndrome in Australian monarchs, and so we might expect to see some potential causal genetic elements for wing morphology to also be associated with diapause. 
+We did not identify loci near the Collagen IV $\alpha$-1 gene as associated with diapause, despite the fact that we did sequence several nearby loci. This is surprising, since although monarchs in Australia (like other non-migratory populations), have substantially smaller and shorter wings than their migratory counterparts [@Freedman2020], we also found from re-analyzing data from Freedman et al.'s (2018) study that wing length is significantly correlated with reproductive development in Australian monarchs. This implies that wing morphology is still a part of the correlated migratory syndrome in Australian monarchs, and so we might expect to see some potential causal genetic elements for wing morphology to also be associated with diapause. 
 
-However, it does make some sense that Collagen IV $\alpha$-1 would not be a key gene in populations that are *newly* migratory. We would argue that migratory genes can be divided into two basic categories: facultative migratory genes and those that are the proximate drivers of migratory behavior. Collagen IV $\alpha$-1 is, for example, a "facultative" migratory gene in that selection acting on it would serve to make already migratory individuals more fit, but would not itself *cause* or *enable* migratory behavior. DPOGS208560, on the other hand, is likely a proximate migratory gene, since individuals that do not delay their reproductive investment have much shorter life-spans and often cannot complete their full migration [@Herman2001]. Genes that control orientation, navigation, and directed flight would also fall into this category to varying extents. Any population that is newly migratory must have some proximate causal gene migratory variants or they would not display migratory behavior in the first place, but may only acquire facultative migratory gene variants over time as selection favors migratory individuals that are better able to complete their migration. That we found DPOGS208560 but not Collagen IV $\alpha$-1 to be associated with migration in Australia supports this hypothesis, and, in general, a complex interpretation of the genetic control of migration in monarchs [@merlinGeneticsEpigeneticsAnimal2019; @greenMonarchButterflyMigration2021]. 
+However, it does make some sense that variance in Collagen IV $\alpha$-1 would not be key to migratory life history variation in populations that are *newly* migratory. Variance in genes that code for traits such as muscle strength or endurance, such as Collagen IV $\alpha$-1, could make already migratory individuals more fit, but would not itself *cause* or *enable* migratory behavior. *Karst* and other genes that code for reproductive diapause may therefore be involved earlier in the evolution of migration, since individuals that do not delay their reproductive investment have much shorter life-spans and often cannot complete their full migration [@Herman2001]. Genes that trigger migratory behavior or control orientation, navigation, and directed flight would also fall into this category to varying extents. That we found *Karst* specifically to be associated with diapause in Australia is therefore not surprising for a newly migratory population [@merlinGeneticsEpigeneticsAnimal2019; @greenMonarchButterflyMigration2021]. 
 
+## Persistence of a migratory life history in Australian monarchs
 
-## Persistence of Migration in Monarchs and Beyond
+Our work suggests that even after ceasing migration for hundreds of generations, monarchs may maintain genetic variation that underlies migratory plasticity. Despite the loss of allelic variance during the successive bottlenecks, monarch butterflies either maintained the genetic variation needed to migrate or secondarily re-acquired it via mutation. This gives us some hope that the contemporary loss of migration that we have observed in many migratory species may be reversible over relatively short evolutionary timescales. At the very least, we can be assured that for monarchs in particular, migratory populations in Australia constitute a reservoir of migratory alleles that could potentially be tapped for North America if needed.
 
-Our work suggests that even if migration is lost in monarchs, it may be temporary. Despite the loss of allelic variance during the successive bottlenecks, monarch butterflies either maintained the genetic variation needed to migrate or secondarily re-acquired it via mutation. This gives us some hope that the contemporary loss of migration that we have observed in many migrants may be reversible over relatively short evolutionary timescales. At the very least, we can be assured that for monarchs in particular, migrants in Australia constitute a reservoir of migratory alleles that could potentially be tapped for North America if needed.
+While monarchs may be able to quickly recover from the loss of migratory behavior, it is unlikely that this is the case for most other migratory species of conservation concern, particularly for vertebrates. For example, if we assume the latter hypothesis (migratory variance in Australian monarchs is the result of a new mutation), it is clear that monarchs have had ample evolutionary opportunity to re-acquire migratory mutations: monarchs have a generation time of approximately seven generations per year if continuously breeding, which means that monarchs in Australia went through roughly ~ `r 7*50` generations in the 50 or so years since they were first reported on the continent, and although they likely experienced a strong bottleneck initially, they were probably at a relatively large effective size for most of that time. Since the rate at which new mutations appear in a population is proportional to both effective populations size and generation time, monarchs have had a large opportunity space for the generation of new migratory alleles. 
 
-While monarchs may be able to quickly recover from the loss of migratory behavior should conditions improve, it is unlikely that this is the case for most other migratory species of conservation concern, particularly for vertebrates. For example, if we assume the latter hypothesis (migratory variance in Australian monarchs is the result of a new mutation), it is clear that monarchs have had ample evolutionary opportunity to re-acquire migratory mutations: monarchs have a generation time of approximately seven generations per year if continuously breeding, which means that monarchs in Australia went through roughly ~ `r 7*50` generations in the 50 or so years since they were first reported on the continent, and although they likely experienced a strong bottleneck initially, they were probably at a relatively large effective size for most of that time. Since the rate at which new mutations appear in a population is proportional to both effective populations size and generation time, monarchs have had a large opportunity space for the generation of new migratory alleles. 
-
-Alternatively, it is safe to assume that if migratory variance in Australian monarchs was maintained from North America this would only have been possible because selection was not actively acting against that variance. This is actually quite likely: monarchs in the Pacific are not exposed to substantial annual changes in day length or average temperature, and thus do not receive their main migratory cues. Environmentally triggered migratory variation, therefore, is probably selectively nearly neutral in the Pacific. In contrast, individually fixed migratory variance, such as wing morphology, was likely selected against across the Pacific, thus driving the observed, repeated decreases in wing size and length observed in newly non-migratory monarch populations [@Freedman2020]. Environmentally triggered migratory variation is therefore more likely type of migratory variation to be maintained in non-migratory populations. 
-
-In contrast to monarchs, however, a species with slower generation times and smaller effective population sizes would be unlikely re-evolve lost phenotypic variance on anything approaching a similar time frame, nor would they as easily hold on to phenotypic variance in the long run under neutral conditions. Nonetheless, our findings are still optimistic for the future of migration in monarch butterflies or in other species where selection on migratory alleles is merely relaxed and not becoming increasingly negative.
+Alternatively, the maintenance of ancestral, North American migratory variance in Australian monarchs would only have been possible because selection was not actively acting against that variance. This is actually quite likely: monarchs in the Pacific are not exposed to substantial seasonal changes in day length or average temperature, and thus do not receive the primary cues thought to be associated with migration initiation. Environmentally triggered, phenotypically plastic migratory variation, therefore, is probably nearly neutral in the Pacific. In contrast, individually fixed migratory variance, such as wing morphology, was likely selected against across the Pacific, thus driving the observed, repeated decreases in wing size and length observed in newly non-migratory monarch populations [@Freedman2020]. Environmentally triggered migratory-associated genetic variation is therefore more likely to be maintained in non-migratory populations than that underlying phenotypically fixed traits. 
 
 # Conclusion
-This study suggests that reproductive diapause in Australian monarch butterflies is influenced by a novel genetic mechanism via the DPOGS208560 gene, and that the previously identified migratory genetic elements were not associated with diapause in this populations. Research to determine if the migratory variant of this gene is the result of ancestral variation maintained from North America or a new mutation is needed. Regardless, our work is consistent with the hypothesis that proximate genetic mechanisms for migration are more likely to quickly re-emerge during a transition to a migratory life history than facultative mechanisms.
+This study suggests that reproductive diapause in Australian monarch butterflies is partially influenced by a novel genetic mechanism via the *Karst* gene, and that the previously identified variable migratory genomic regions were not associated with diapause in this populations. Research to determine if the migratory variant of this gene is the result of ancestral variation maintained from North America or a new mutation is needed. Our work is also consistent with the hypothesis that genetic variance which enables migration, rather than that which bolsters the fitness of already migratory individuals, is more likely to be observed in recently evolved migratory populations.
 
 # Acknowledgements and Funding Sources
-We would like to thank Dr. Shawan Chowdhury for his assistance with Monarch feeding and maintenance during the rearing process and Dr. Sean O’Rourke for assistance during library preparation and sequencing. Travel and sequencing funding was provided by the Jastro-Shields Graduate Research Award and the UC Davis Department of Animal Science. MF was funded by NSF Postdoctoral Fellowship Award 2010658.
+We would like to thank Dr. Shawan Chowdhury for his assistance with monarch feeding and maintenance during the rearing process and Dr. Sean O’Rourke for assistance during library preparation and sequencing. Travel and sequencing funding was provided by the Jastro-Shields Graduate Research Award and the UC Davis Department of Animal Science. MF was funded by NSF Postdoctoral Fellowship Award 2010658.
 
 
 # References
 <div id="refs"></div>
 
 # Data Availability and Benefits-Sharing
-Data Availability: The raw sequencing data produced for this study are available from the NCBI under accession number (to be provided). The filtered genotypes and the scripts used to produce both them and this paper are available at https://github.com/hemstrow/aus_monarchs. The exact script used to produce this paper from the genotypic data, including all non-map figures, is available at https://github.com/hemstrow/aus_monarchs/blob/master/paper/paper_draft.Rmd.
+Data Availability: The raw sequencing data produced for this study are available from the NCBI under accession number PRJNA984345. The filtered genotypes and the scripts used to produce both them and this paper are available at https://github.com/hemstrow/aus_monarchs. The exact script used to produce this paper from the genotypic data, including all non-map figures, is available at https://github.com/hemstrow/aus_monarchs/blob/master/paper/paper_draft.Rmd.
 
 Benefit-Sharing: This paper represents the continuation of a collaboration between researchers in the United States and Australia. All major contributors are listed as co-authors. This paper also extends our knowledge of critical phenotypic variance in a newly-listed endangered species. All of the data produced in this paper are shared with the public at the repositories above.
 
@@ -514,12 +630,12 @@ WH and MM designed the study with input from MF and MZ. WH collected, raised, an
 # Tables and Figures
 
 ```{r Table1,echo=FALSE}
-Tab1 <- table(sample.meta(dat)[,c("year", "likely_pheno")])
+Tab1 <- table(sample.meta[,c("year", "quant_pheno")])
 Tab1 <- addmargins(Tab1)
-Tab1 <- reshape2::dcast(as.data.frame(Tab1), year ~ likely_pheno, value.var = "Freq")
+Tab1 <- reshape2::dcast(as.data.frame(Tab1), year ~ quant_pheno, value.var = "Freq")
 Tab1$year <- as.character(Tab1$year)
 Tab1[Tab1 == "Sum"] <- "Total"
-colnames(Tab1) <- c("Year", "# In Diapause", "# Reproductive", "# Total")
+colnames(Tab1) <- c("Year", "# Immature", "# Partially Mature", "# Mature", "Total")
 # Tab1 <- gt::gt(Tab1, caption = c("Table 1: Number of individuals in diapuase or that are reproductive for each year.")) %>%
 #   gt::cols_label(year = "Year", M = gt::html("N<sub>subscript</sub>"), R = gt::html("N<sub>Reproductive</sub>"), Sum = gt::html("N<sub>Total</sub>"))
 
@@ -531,41 +647,11 @@ colnames(Tab1) <- c("Year", "# In Diapause", "# Reproductive", "# Total")
 #              col.names = c("Year", "# Diapause", "# Reproductive", "# Total"), escape = FALSE) %>% kableExtra::kable_styling()
 
 
-flextable::regulartable(Tab1, cwidth = 1.2) %>% flextable::set_caption(., "Counts of individual monarch butterfly reproductive status in each year.")
+flextable::regulartable(Tab1, cwidth = 1.2) %>% flextable::set_caption(., "Total count of immature, partially mature, and mature female monarch butterflies reared and sequenced in each sampling year.")
 ```
 
+Figure 1: Approximate ancestral North American and introduced migratory and non-migratory ranges with introduction dates for monarch butterflies in the Pacific, with sampling location noted in blue. Photo courtesy of William Hemstrom.
 
-```{r Figure_1_print,echo=FALSE,warning=FALSE,fig.cap="Figure 1: Approximate ancestral and introduced ranges with introduction dates for monarch butterflies in the Pacific, with sampling location noted in orange.",fig.width=8, fig.height=8, fig.align='center', fig.cap.style="Image Caption"}
+Figure 2: Genome-wide association results for diapause in Australian monarch butterflies. A: Examples of reproductive development for female adult monarchs rates as reproductively mature, partially mature, and immature. B: Average reproductive development scores for maternal families. Average scores were significantly more skewed than expected by chance (orange line). C: Quantile-quantile plot for association results showing a few strong outliers but otherwise conformance to the expected distribution of p-values. D: Manhattan plot showing the strength of association with reproductive status genome-wide. Values above the blue line indicate significant associations after false discovery rate p-value adjustment.
 
-# from https://stackoverflow.com/questions/9543343/plot-a-jpg-image-using-base-graphics-in-r
-plot_jpeg <- function(path, add=FALSE)
-{
-  require('jpeg')
-  jpg = readJPEG(path, native=T) # read the file
-  res = dim(jpg)[2:1] # get the resolution, [x, y]
-  if (!add) # initialize an empty plot area if add==FALSE
-    plot(1,1,xlim=c(1,res[1]),ylim=c(1,res[2]),asp=1,type='n',xaxs='i',yaxs='i',xaxt='n',yaxt='n',xlab='',ylab='',bty='n')
-  rasterImage(jpg,1,1,res[1],res[2])
-}
-
-plot_jpeg('../results/map_annotated.jpg') # needs to be rescaled a bit manually, or just insert the jpg directly into the docx
-
-# Figure1 <- imager::load.image("../results/map_annotated.jpg")
-# plot(image, axes = FALSE)
-
-```
-
-```{r Figure_2_print,echo=FALSE,warning=FALSE,fig.cap="Figure 2: Principal Component Analysis of the monarchs from 2016 and 2018, colored by maternal family.",fig.width=8, fig.height=8, fig.align='center', fig.cap.style="Image Caption"}
-
-pca$data$pca$MotherID <- factor(pca$data$pca$MotherID, levels = sort(as.numeric(unique(pca$data$pca$MotherID))))
-colnames(pca$data$pca)[which(colnames(pca$data$pca) == "year")] <- "Year" 
-
-ggplot(pca$data$pca, aes(x = PC1, y = PC2, shape = Year, color = MotherID)) + geom_point(size = 4) +
-  theme_bw() + scale_color_viridis_d(name = "Maternal Family") + ylab(pca$plots$pca$labels$y) + xlab(pca$plots$pca$labels$x)
-```
-
-
-```{r Figure_3_print,echo=FALSE,warning=FALSE,fig.cap="Figure 3: Percentage of individuals in reproductive diapause in each maternal family (A) and  GMMAT p-values for association between each SNP and diapause status across all individuals (B). SNPs with a p-value lower that 5 x 10^-5 are highlighted in red.",fig.width=8, fig.height=6, fig.align='center', fig.cap.style="Image Caption"}
-grid.arrange(Figure3a + ggtitle("A"), Figure3b + ggtitle("B"), Figure3al, layout_matrix = matrix(c(1, 2, 3, NA), nrow = 2), widths = c(1, .1))
-
-```
+Figure 3: Distribution of genome-wide association test p-values adjacent to each of the three outlier regions (top). Genes that are at least partially within 50kb of outlier SNPs are noted (bottom), with CDS regions highlighted in black. One specific gene (LOC133319386) had no match in the monarch official gene set, and so is instead listed with its RefSeq ID.

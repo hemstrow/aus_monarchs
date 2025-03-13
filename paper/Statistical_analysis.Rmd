@@ -1,0 +1,868 @@
+---
+title: "Statistical analysis for: Novel genetic association with migratory diapause in Australian monarch butterflies"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  word_document:
+    reference_docx: "paper-files/style_ref.docx"
+  pdf_document:
+    keep_tex: true
+    fig_caption: true
+    latex_engine: pdflatex
+    fig_width: 7
+    fig_height: 6
+bibliography: "paper-files/citations.bib"
+csl: "paper-files/vancouver.csl"
+header-includes:
+  - \usepackage[left]{lineno}
+  - \linenumbers
+  - \usepackage{setspace}\doublespacing
+  - \usepackage{sectsty}\sectionfont{\fontsize{12}{12}\selectfont}
+  - \usepackage{sectsty}\subsectionfont{\normalfont\itshape\fontsize{12}{12}\selectfont}
+  - \usepackage[round]{natbib}
+indent: true
+sansfont: Times New Roman
+fontsize: 12pt
+always_allow_html: true
+---
+
+# Part 1: Map and manhattan
+Setup:
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(snpR); library(data.table); library(ggplot2); library(dplyr);
+library(cowplot); library(openxlsx); library(nlme); library(gggenes);
+library(Biostrings)
+
+library(rnaturalearth)
+library(ggplot2)
+library(sf)
+library(ggspatial)
+library(ggimage)
+
+```
+
+Figure 1 (needs edited a bit later in some other software to produce final figure).
+```{r base_map, include=FALSE}
+world <- ne_countries(scale = 'small', returnclass = 'sf')
+
+polygon <- st_polygon(x = list(rbind(c(-0.0001, 90),
+                                     c(0, 90),
+                                     c(0, -90),
+                                     c(-0.0001, -90),
+                                     c(-0.0001, 90)))) |>
+  st_sfc() |>
+  st_set_crs(4326)
+
+sf::sf_use_s2(FALSE)
+
+
+world <- world |> st_difference(polygon)
+
+world_robin <- st_transform(world, crs = '+proj=robin +lon_0=180 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs')
+
+sf::sf_use_s2(TRUE)
+
+# world <- ggplot() +
+#   geom_sf(data = world_robin, fill= "azure2")  + #background color for land
+#   coord_sf(xlim = c(-70e5, 100e5),
+#            ylim = c(-60e5, 58e5)) +
+#   theme_bw() +
+#   annotation_scale(text_cex = 1.5) + 
+#   theme(axis.text = element_text(size = 20),
+#         axis.title = element_text(size = 24)) +
+#   annotation_north_arrow(style = north_arrow_fancy_orienteering(text_size = 20), location = "bl", 
+#                          pad_y = grid::unit(.05, "native"))
+# 
+# world
+# ggsave("results/map.jpg", world, "jpg", width = 15, height = 11) # note, need to annotate this with ranges and arrows to produce final image
+
+world <- ggplot() +
+  geom_sf(data = world_robin, fill= "#dec079")  + #background color for land
+  coord_sf(xlim = c(-70e5, 100e5),
+           ylim = c(-60e5, 58e5)) +
+  theme_bw() +
+  annotation_scale(text_cex = 1.5, bar_cols = c("#eb612e", "#dec079"), text_family = "serif", text_col = "#393e42", pad_y = unit(0.75, "cm")) +
+  theme(axis.text = element_text(size = 20, color = "#393e42"),
+        axis.title = element_text(size = 24),
+        panel.grid = element_line(color = "#393e42")) +
+  annotation_north_arrow(style = north_arrow_fancy_orienteering(text_size = 20,
+                                                                text_col = "#393e42",
+                                                                text_family = "serif",
+                                                                fill = c("#eb612e", "#dec079"),
+                                                                line_col = "#393e42"),
+                         location = "bl",
+                         pad_y = grid::unit(.05, "native"))
+
+world
+ggsave("Figure1_base.jpg", world, "jpg", width = 15, height = 11)
+```
+
+Read in the metadata:
+<!-- chunks located here to ensure everything calls correctly -->
+```{r, read_sample_meta_get_numbers, echo=FALSE,message=FALSE,include=FALSE,warning=FALSE}
+sample.meta <- read.table("../data/sample_metadata.txt", header = T, stringsAsFactors = F)
+old.data <- data.table::fread("../data/Aus_2018_metadata.txt", header = T)
+old.data[,fam := as.numeric(gsub("_.+", "", ID))]
+
+meta.micah <- data.table::fread("../data/2016_mon_meta.txt", header = TRUE)
+```
+
+Produce figure 2, including reading in the association test results:
+
+```{r import_and_diversity, echo=FALSE, message=FALSE, warning=FALSE,include=FALSE}
+#==========prep data==========
+# read in genotypes and metadata
+sample.meta <- read.table("../data/sample_metadata_v4.txt", header = T, stringsAsFactors = F)
+
+# remove samples with no phenotypic data
+# nas <- which(is.na(sample.meta$likely_pheno))
+# genos <- genos[,-which(is.na(sample.meta$likely_pheno))]
+# sample.meta <- sample.meta[-which(is.na(sample.meta$relaxed_pheno)),]
+
+# add in colony info
+fam_info <- sample.meta(readRDS("../colony/colony_R_outputs.RDS")$col_res$x)
+fam_info$MotherID <- as.numeric(gsub("#", "", fam_info$MotherID))
+fam_info$MotherID <- factor(fam_info$MotherID, levels = 1:max(fam_info$MotherID))
+sample.meta$MotherID <- fam_info$MotherID[match(sample.meta$SampleID, fam_info$SampleID)] 
+fam_info$FatherID <- as.numeric(gsub("\\*", "", fam_info$FatherID))
+fam_info$FatherID <- factor(fam_info$FatherID, levels = 1:max(fam_info$FatherID))
+sample.meta$FatherID <- fam_info$FatherID[match(sample.meta$SampleID, fam_info$SampleID)] 
+sample.meta$cluster <- fam_info$ClusterIndex[match(sample.meta$SampleID, fam_info$SampleID)] 
+
+# send year to factor, import, and filter
+sample.meta$year <- as.factor(sample.meta$year)
+
+
+#==========PCA plot==============
+PCA <- fread("../scripts/association/PCAngsd_out.cov")
+e <- eigen(as.matrix(PCA))
+PCA <- e$vectors
+PCA <- as.data.table(PCA)
+colnames(PCA) <- paste0("PC", 1:ncol(PCA))
+t.sizes <- c(18, 12)
+FigureS1 <- ggplot(PCA, aes(x = PC1, y = PC2)) +
+  geom_point(size = 3) +
+  theme_bw() + 
+  theme(legend.text = element_text(size = t.sizes[2]),
+        axis.text = element_text(size = t.sizes[2]),
+        axis.title = element_text(size = t.sizes[1]),
+        axis.text.y = element_text(size = t.sizes[2]),
+        legend.title = element_text(size = t.sizes[1])) +
+  xlab(paste0("PC1 (", round(e$values[1]/sum(e$values)*100, 3), "%)")) +
+  ylab(paste0("PC2 (", round(e$values[2]/sum(e$values)*100, 3), "%)"))
+
+```
+
+```{r Figure2, echo=FALSE, warning=FALSE, message=FALSE}
+#==========family bias===================
+bias <- sample.meta[,c("MotherID", "FatherID", "quant_pheno")]
+bias$quant_pheno <- bias$quant_pheno/2
+bias$MotherID <- as.factor(bias$MotherID)
+bias$FatherID <- as.factor(bias$FatherID)
+
+# permute to show expected random range per rank
+perms <- matrix(0, 1000, length(unique(bias$MotherID)))
+for(i in 1:nrow(perms)){
+  tb <- bias
+  tb$quant_pheno <- sample(tb$quant_pheno, nrow(tb), TRUE)
+  perm_p <- tapply(tb$quant_pheno, tb$MotherID, mean)
+  perm_p <- as.data.frame(perm_p)
+  perm_p$MotherID <- 1:nrow(perm_p)
+  colnames(perm_p)[1] <- "score"
+  perm_p$rank <- rank(perm_p$score, ties.method = "first")
+  perm_p$total <- as.numeric(table(tb$MotherID))
+  perms[i,] <- perm_p$score[order(perm_p$rank)]
+}
+perm_summary <- data.table(score = colMeans(perms),
+                           rank = 1:ncol(perms))
+perm_summary[, c("lCI", "uCI") := as.data.frame(t(apply(perms, MARGIN = 2, FUN = function(x){
+  return(t.test(x)$conf.int)
+})))]
+
+# anova to show significance
+m1 <- lm(quant_pheno ~ MotherID, bias)
+m1_an <- anova(m1)
+
+# convert for plotting
+bias_p <- tapply(bias$quant_pheno, bias$MotherID, mean)
+bias_p <- as.data.frame(bias_p)
+bias_p$MotherID <- 1:nrow(bias_p)
+colnames(bias_p)[1] <- "score"
+bias_p$rank <- rank(bias_p$score, ties.method = "first")
+bias_p$total <- as.numeric(table(bias$MotherID))
+
+# generate plot
+t.sizes <- c(18, 12)
+Figure2a <- ggplot(bias_p, aes(x = rank, y = score, size = total)) +
+  geom_point(color ="#393e42") + theme_bw() +
+  geom_line(data = perm_summary, aes(x = rank, y = score), inherit.aes = FALSE, color = "#eb612e") +
+  geom_ribbon(data = perm_summary, aes(ymin = lCI, ymax = uCI, x = rank), 
+              inherit.aes = FALSE, color = "#eb612e", alpha = .2) +
+  xlab("Maternal Family") +
+  ylab("Mean Reproductive Score") +
+  labs(size = "Family Size")  +
+  theme(legend.text = element_text(size = t.sizes[2] - 2),
+        axis.text = element_text(size = t.sizes[2]),
+        axis.title = element_text(size = t.sizes[1]),
+        axis.text.y = element_text(size = t.sizes[2]),
+        legend.title = element_text(size = t.sizes[2]),
+        title = element_text(size = t.sizes[1] + 2)) +
+  scale_size_continuous(range = c(5, 10)) +
+  ggtitle("B")
+
+
+
+
+# ggsave("~/2022-2023/ICCB2023/scatter.jpg", Figure3a, device = "jpg", dpi = 1000, height = 4, width = 8, scale = 3)
+
+
+  
+
+#==========association test -- read in from ANGSD============
+chr_key <- fread("../data/chr_info.tsv")
+chr_key$Chr_ID <- chr_key$`Chromosome name`
+chr_key$Chr_ID <- make.unique(chr_key$Chr_ID)
+chr_key$partID <- as.numeric(gsub(".+\\.", "", chr_key$Chr_ID))
+chr_key$partID[-grep("\\.", chr_key$Chr_ID)] <- 0
+chr_key <- dplyr::arrange(chr_key, as.numeric(`Chromosome name`), partID)
+adat_quant <- data.table::fread("../scripts/association/association_out_quant_cov.lrt0.gz", header = T)
+adat_quant$chr <- chr_key$Chr_ID[match(adat_quant$Chromosome, chr_key$`RefSeq seq accession`)]
+adat_quant[grep("Un", chr), chr := "Other"]
+adat_quant$pval <- pchisq(adat_quant$LRT, 1, lower.tail = FALSE)
+adat_quant$lpval <- -log(adat_quant$pval)
+adat_quant$fdr <- p.adjust(adat_quant$pval, "fdr")
+adat_quant <- dplyr::arrange(adat_quant, pval)
+
+q_quant <- plot_qq(adat_quant, "pval")
+Figure2b <- ggplot(q_quant$.base$data, aes(x = .e, y = .o)) +
+  geom_point(color = "#393e42") +
+  geom_abline(slope = 1, intercept = 0, color = "#eb612e") +
+  theme_bw() +
+  theme(legend.text = element_text(size = t.sizes[2]),
+        axis.text = element_text(size = t.sizes[2]),
+        axis.title = element_text(size = t.sizes[1]),
+        axis.text.y = element_text(size = t.sizes[2]),
+        legend.title = element_text(size = t.sizes[1]),
+        title = element_text(size = t.sizes[1] + 2)) +
+  ylab(bquote(Observed ~ log[10](p))) +
+  xlab(bquote(Expected ~ log[10](p))) +
+  ggtitle("C")
+  
+
+# note -- color scheme for posters!
+ord <- unique(chr_key$Chr_ID, sort = F)
+ord <- ord[-grep("Un", ord)]
+ord <- ord[-which(ord == "Z")]
+ord <- c("Z", ord, "Other")
+Figure2c <- plot_manhattan(adat_quant, "fdr", chr = "chr", bp = "Position",
+                           significant = 0.05, suggestive = .1, log.p = TRUE,
+                           chr_order = ord,
+                           highlight = FALSE, colors = c("#eb612e", "#393e42"), 
+                           t.sizes = c(t.sizes[1], t.sizes[1], t.sizes[2]), 
+                           simplify_output = TRUE) # highlight top snp
+
+# refetch chr centers, pulled from snpR
+chr.info <- tapply(Figure2c$data[,"cum.bp"], Figure2c$data[,"chr"], max) # chromosome lengths
+chr.centers <- rowMeans(cbind(tapply(Figure2c$data[,"cum.bp"], Figure2c$data[,"chr"], min), chr.info)) # chromosome centers
+
+# plot
+Figure2c <- Figure2c +
+  ylab("-log10(p-value)") +
+  xlab("Chromosome") +
+  theme(legend.text = element_text(size = t.sizes[2]),
+        axis.text = element_text(size = t.sizes[2]),
+        axis.title = element_text(size = t.sizes[1]),
+        axis.text.y = element_text(size = t.sizes[2]),
+        legend.title = element_text(size = t.sizes[1]),
+        title = element_text(size = t.sizes[1] + 2)) +
+  scale_x_continuous(expand = c(0, 0), breaks = chr.centers, labels = 
+                       names(chr.centers)) +
+  ggtitle("D")
+
+# ggsave("~/2022-2023/ICCB2023/manhattan.jpg", Figure3b, device = "jpg", dpi = 1000, height = 4, width = 8, scale = 3)
+
+#==========egg photos (actual A)=========
+imgs <- data.frame(category = c("Mature", "Partially Mature", "Immature"),
+                   img = c("~/GitHub/aus_monarchs/paper/paper-files/mature.JPG",
+                           "~/GitHub/aus_monarchs/paper/paper-files/partially_mature.JPG",
+                           "~/GitHub/aus_monarchs/paper/paper-files/immature.JPG"),
+                   x = 1,
+                   y = 1)
+imgs$category <- factor(imgs$category, levels = c("Mature", "Partially Mature", "Immature"))
+
+eggplot <- ggplot(imgs, aes(x = x, y = y, image = img)) +
+  geom_image(size = 1.3) +
+  facet_wrap(~category, ncol = 1, strip.position = "left") +
+  theme_minimal() +
+  theme(strip.text = element_text(size = t.sizes[2], angle = 90),
+        strip.placement = "outside",
+        title = element_text(size = t.sizes[1] + 2),
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        panel.grid = element_blank()) +
+  ggtitle("A")
+
+
+#==========combine=======================
+f2al <- ggpubr::get_legend(Figure2a)
+Figure2_top <- plot_grid(eggplot, Figure2a + guides(size = "none"), 
+                         f2al, Figure2b, 
+                         align = "hv", axis = "tlbr",
+                         nrow = 1,
+                         rel_widths = c(.5, 1, .2, 1)) # note, A is actually egg pictures, these labels are off
+
+Figure2 <- plot_grid(Figure2_top,
+                     Figure2c,
+                     nrow = 2)
+
+save_plot("Figure2.pdf", Figure2, base_height = 11, base_width = 15)
+
+```
+
+Re-analyze the old wing morphology data to show correlated migratory syndrome.
+```{r re_analyze, include=FALSE}
+old_phenotypic <- read.xlsx("../data/monarch_development.xlsx")
+
+mod_AsRa <- lme(Aspect_Ratio ~ Yolked_Oocytes, random = ~ 1|Female_Line, old_phenotypic, na.action = na.omit)
+mod_Area <- lme(Marea ~ Yolked_Oocytes, random = ~ 1|Female_Line, old_phenotypic, na.action = na.omit)
+```
+
+# Analyize genes of interest
+Produce Figure 3:
+```{r genes_of_interest}
+#=======identify targets=========
+window <- 50*1000 # 10kb
+targets <- adat_quant[fdr <= 0.05,]
+targets[,start := Position - window]
+targets[,end := Position + window]
+targets <- dplyr::arrange(targets, Chromosome, start)
+
+# one peak per chr, so simplify
+targets[,start := min(start), by = chr]
+targets[,end := max(end), by = chr]
+targets <- unique(targets[,c("Chromosome", "chr", "start", "end")])
+
+#=======locate genes=============
+gtf <- rtracklayer::readGFF("../data/genomic.gtf")
+gtf <- as.data.table(gtf)
+gtf[,direction := ifelse(strand == "+", TRUE, FALSE)]
+keep <- vector("list", nrow(targets))
+all_genes <- keep
+for(i in 1:nrow(targets)){
+  keep[[i]] <- gtf[which(seqid == targets[i,Chromosome] &
+                     ((end >= targets[i,start] & end <= targets[i,end]) |
+                        (start <= targets[i,end] & start >= targets[i,start]) |
+                        (start <= targets[i, start] & end >= targets[i, end]))),]
+  all_genes[[i]] <- unique(keep[[i]][type == "gene",])
+}
+all_genes <- rbindlist(all_genes, idcol = "target")
+IDs <- gsub("GeneID:", "", all_genes$db_xref)
+
+# get the prot sequences from NCBI
+cmd <- paste0("~/bin/datasets download gene gene-id ", paste0(IDs, collapse = " "))
+system(cmd)
+
+# copy the .faa and paste into monarchbase, read in the result here
+prot_matches <- fread("../data/prot_matches_monarchbase.txt")
+prot_matches[,LOC := unlist(stringi::stri_extract_all_regex(`Query ID`, "LOC.{9}"))]
+prot_matches <- dplyr::arrange(prot_matches, LOC, Evalue)
+prot_matches <- prot_matches[, head(.SD, 1), by= `Query ID`]
+prot_matches <- dplyr::arrange(prot_matches, Length)
+prot_matches <- prot_matches[, head(.SD, 1), by= LOC]
+
+all_genes <- merge(all_genes, prot_matches, by.x = "gene_id", by.y = "LOC", all = TRUE)
+
+#========plot====================
+plot_parts <- vector("list", nrow(targets))
+pmax <- max(-log10(adat_quant$fdr))
+
+
+for(i in 1:nrow(targets)){
+  # figure out max and min range
+  min_pos <- targets[i,start]
+  max_pos <- targets[i,end]
+  
+  tgtf <- keep[[i]]
+  subgene <- tgtf[type == "CDS",]
+  tgtf <- tgtf[type == "gene",]
+  subgene[,gene_start := tgtf$start[match(gene, tgtf$gene)]]
+  subgene[,gene_end := tgtf$end[match(gene, tgtf$gene)]]
+  
+  tgtf[,gene_lab := start + ((end - start)/2)]
+  tgtf$OGS_name <- all_genes$`Monarch geneid`[match(tgtf$gene_id, all_genes$gene_id)]
+  tgtf$OGS_name[is.na(tgtf$OGS_name)] <- tgtf$gene_id[is.na(tgtf$OGS_name)]
+
+  subgene[,OGS_name := tgtf$OGS_name[match(gene, tgtf$gene)]]
+  
+  if(min_pos > min(c(tgtf$start, tgtf$end))){
+    min_pos <- min(c(tgtf$start, tgtf$end))
+  }
+  if(max_pos < max(c(tgtf$start, tgtf$end))){
+    max_pos <- max(c(tgtf$start, tgtf$end))
+  }
+  
+  # plot SNPs
+  
+  tsnps <- adat_quant[which(Chromosome == targets[i,Chromosome] &
+                     Position >= min_pos & Position <= max_pos),]
+  
+  pt <- ggplot(tsnps, aes(x = Position/1000000, y = -log10(fdr))) +
+    geom_point() +
+    theme_bw() +
+    scale_x_continuous(limits = c(min_pos/1000000, max_pos/1000000)) +
+    scale_y_continuous(expand = c(0, .05), limits = c(0, pmax))
+  
+  pmax <- max(c(pmax, max(-log10(tsnps$fdr))))
+  
+  if(i == 1)
+    pt <- pt + 
+    theme(axis.text.x = element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.y = element_text(size = t.sizes[2]),
+          axis.title.y = element_text(size = t.sizes[1]),
+          axis.ticks.x = element_blank()) +
+  ylab(bquote(-log[10](p[FDR])))
+  
+  if(i != 1){
+    pt <- pt + 
+      theme(axis.text.x = element_blank(),
+          axis.title = element_blank(),
+          axis.text.y = element_text(size = t.sizes[2]),
+          axis.ticks.x = element_blank())
+  }
+  
+  
+  tgtf$OGS_name[tgtf$OGS_name == "DPOGS204613"] <- paste0("Karst/DPOGS204613")
+  subgene$OGS_name[subgene$OGS_name == "DPOGS204613"] <- paste0("Karst/DPOGS204613")
+  
+  pb <- ggplot(tgtf, aes(xmin = start/1000000, xmax = end/1000000, 
+                         y = OGS_name, forward = direction, fill = gene)) +
+    geom_gene_arrow(arrow_body_height = unit(1, "lines"),
+                    arrowhead_height = unit(1.5, "lines"), show.legend = FALSE,
+                    fill = "#E5C16F") + 
+    geom_subgene_arrow(data = subgene, 
+                       aes(xmin = gene_start/1000000, xmax = gene_end/1000000, 
+                           xsubmin = start/1000000, xsubmax = end/1000000,
+                           y = OGS_name), 
+                       fill = "black", arrow_body_height = unit(1, "lines"),
+                       arrowhead_height = unit(1.5, "lines")) +
+    theme_bw() +
+    scale_x_continuous(limits = c(min_pos/1000000, max_pos/1000000)) +
+    ylab("Gene") +
+    xlab(paste0("Chromosome ", targets[i]$chr, " Position (mb)"))
+  
+  if(i == 1)
+    pb <- pb + 
+    theme(axis.text = element_text(size = t.sizes[2]),
+          axis.title = element_text(size = t.sizes[1]))
+  
+  if(i != 1){
+    pb <- pb + 
+      theme(axis.title.y = element_blank(),
+          axis.text = element_text(size = t.sizes[2]),
+          axis.title.x = element_text(size = t.sizes[1]))
+  }
+  
+  plot_parts[[i]] <- plot_grid(pt, pb, ncol = 1, rel_heights = c(1, 1),
+                               align = "hv", axis = "tl")
+  
+}
+
+
+Figure3 <- plot_grid(plot_parts[[1]],
+                     plot_parts[[2]] + theme(axis.title.y = element_blank()),
+                     plot_parts[[3]] + theme(axis.title.y = element_blank()), nrow = 1) +
+  theme(plot.margin = unit(c(.1, .5, .1, .5), "cm"))
+
+save_plot("Figure3.pdf", Figure3, base_height = 11, base_width = 15)
+
+```
+
+# Misc statistics for paper
+Mapping stats:
+```{r mapping_stats}
+sort_flagstat <- list.files("../data/v4/flagstat/", "\\.sort\\.flagstat", full.names = TRUE)
+flt_flagstat <- list.files("../data/v4/flagstat/", "\\.sort\\.flt\\.flagstat", full.names = TRUE)
+
+sort_flagstat <- unlist(lapply(sort_flagstat, readLines))
+flt_flagstat <- unlist(lapply(flt_flagstat, readLines))
+
+mapping <- data.table(sample = sample.meta$SampleID,
+                      reads = as.numeric(gsub(" .+", "", sort_flagstat[seq(1, length(sort_flagstat), by = 16)])),
+                      mapped = as.numeric(gsub(" .+", "", sort_flagstat[seq(7, length(sort_flagstat), by = 16)])),
+                      retained = as.numeric(gsub(" .+", "", flt_flagstat[seq(1, length(sort_flagstat), by = 16)])))
+
+total_reads <- sum(mapping$reads)
+total_mapped <- sum(mapping$mapped)
+total_retained <- sum(mapping$retained)
+
+percent_mapped <- total_mapped/total_reads
+percent_retained <- total_retained/total_reads
+
+```
+
+Table S1
+```{r Table_S1}
+
+TS1 <- all_genes[,c("gene_id", "Monarch geneid", "seqid", "start", "end")]
+TS1$Chromosome <- targets$chr[match(TS1$seqid, targets$Chromosome)]
+colnames(TS1) <- c("RefSeq ID", "OGS ID", "Chromosome RefSeq ID", "Start", "End", "Chromosome")
+TS1 <- TS1[,c("RefSeq ID", "OGS ID", "Chromosome", "Chromosome RefSeq ID", "Start", "End")]
+TS1 <- dplyr::arrange(TS1, Chromosome, Start)
+fwrite(TS1, "TableS1.txt", sep = "\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
+
+```
+
+Table 1:
+```{r Table1,echo=FALSE}
+Tab1 <- table(sample.meta[,c("year", "quant_pheno")])
+Tab1 <- addmargins(Tab1)
+Tab1 <- reshape2::dcast(as.data.frame(Tab1), year ~ quant_pheno, value.var = "Freq")
+Tab1$year <- as.character(Tab1$year)
+Tab1[Tab1 == "Sum"] <- "Total"
+colnames(Tab1) <- c("Year", "# Immature", "# Partially Mature", "# Mature", "Total")
+Tab1$`# Maternal Familes` <- c(dplyr::arrange(as.data.table(sample.meta[,c("year", "MotherID")])[,list(nfam = length(unique(MotherID))), by = year], year)$nfam,
+                               length(unique(sample.meta$MotherID)))
+# Tab1 <- gt::gt(Tab1, caption = c("Table 1: Number of individuals in diapuase or that are reproductive for each year.")) %>%
+#   gt::cols_label(year = "Year", M = gt::html("N<sub>subscript</sub>"), R = gt::html("N<sub>Reproductive</sub>"), Sum = gt::html("N<sub>Total</sub>"))
+
+
+# kableExtra::kable(Tab1, format = "latex", booktabs = T, linesep ="\\addlinespace", caption = c("Table 1: Number of individuals in diapuase or that are reproductive for each year."), col.names = c("Year", "Diapause", "Reproductive", "Total")) %>% kableExtra::kable_styling()
+
+# kableExtra::kable(Tab1,
+#              caption = "Table 1: Contingency Table for the number of diapaused and reproductive individuals for each year.",
+#              col.names = c("Year", "# Diapause", "# Reproductive", "# Total"), escape = FALSE) %>% kableExtra::kable_styling()
+
+
+flextable::regulartable(Tab1, cwidth = 1.2) %>% flextable::set_caption(., "Total count of immature, partially mature, and mature female monarch butterflies reared and sequenced in each sampling year.")
+```
+
+# Karst across the pacific and models
+## Read in
+Read in the gprobs and the called, phased data.
+
+```{r}
+genos <- fread("D://Cluster_storage/comparison_monarchs/candidate_region_gl_imputed.candidate_region.beagle.gz.phased.gz")
+
+gprobs <- fread("D://Cluster_storage/comparison_monarchs/candidate_region_gl_imputed.candidate_region.beagle.gz.gprobs.gz")
+
+bamlist <- fread("D://Cluster_storage/comparison_monarchs/bamlist.txt", header = FALSE)
+```
+
+Figure out which calls have low confidence in
+```{r}
+gprobs <- gprobs[,-c(1:3)]
+# loop through each individual
+prog <- 1
+OK <- matrix(TRUE, nrow(gprobs), ncol = ncol(gprobs)/3)
+for(i in 1:(ncol(gprobs)/3)){
+  max_freq <- matrixStats::rowMaxs(as.matrix(gprobs[,prog:(prog + 2)]))
+  OK[,i] <- ifelse(max_freq >= 0.95, TRUE, FALSE)
+  prog <- prog + 2
+}
+```
+
+Joint mark loci, individuals to remove below 50% called.
+
+```{r}
+mloc <- rowMeans(OK) # missing per locus
+mind <- colMeans(OK) # missing per ind
+
+bad_ind <- which(mind < .6)
+bad_loc <- which(mloc < .6)
+
+OK <- OK[-bad_loc, -bad_ind]
+```
+
+Distribution of OK imputation
+```{r}
+plot(colMeans(OK))
+```
+
+## Prepare metadata
+```{r}
+sample.meta <- read.table("../data/sample_metadata_v4.txt", header = T, stringsAsFactors = F)
+matches <- numeric(nrow(sample.meta))
+plates <- stringi::stri_extract(bamlist$V1, regex = "plate_[1-3]")
+plates <- gsub("_", "", plates)
+barcode <- stringi::stri_extract(bamlist$V1, regex = "RA_GG[A-Z]{13}\\.")
+barcode <- gsub("RA_GG", "", barcode)
+barcode <- gsub("TGCAG\\.", "", barcode)
+# for(i in 1:length(matches)){
+#   matches[i] <- intersect(which(sample.meta$Index[i] == barcode), which(sample.meta$Plate[i] == plates))
+# }
+
+meta <- data.table(barcode = bamlist$V1)
+meta[is.na(plates), pop := substr(barcode, 1, 3)]
+meta[is.na(plates), phenotype := as.numeric(NA)]
+meta[!is.na(plates), pop := "AUS"]
+meta[,Index := gsub("TGCAG\\..+", "", gsub(".+_GG", "", barcode))]
+meta[,Plate := gsub("rad_split.+", "", gsub("\\.\\./aus_monarchs/", "", barcode))]
+meta[,Plate := gsub("_", "", Plate)]
+meta <- merge(meta, sample.meta[,c("Index", "quant_pheno", "Plate")], by = c("Index", "Plate"), all.x = TRUE, sort = FALSE)
+# meta[matches, phenotype := sample.meta$quant_pheno]
+meta[,pop_cat := ifelse(pop == "NAM", "North America",
+                        ifelse(pop %in% c("QLD", "NSW", "AUS"), "Australia", 
+                               ifelse(pop == "HAW", "Hawaii", "Pacific")))]
+
+```
+
+## Get genotypes and allele frequencies
+
+Remove the poor individuals and loci
+```{r}
+bad_ind_indices <- rep(1:((ncol(genos) - 2)/2), each = 2)
+bad_ind_indices <- which(bad_ind_indices %in% bad_ind) + 2
+genos <- genos[-bad_loc,-..bad_ind_indices]
+meta <- meta[-bad_ind,]
+```
+
+Find loci with low mgc and remove
+```{r}
+# combine, then import to snpR
+combined_genos <- as.matrix(genos[,-c(1:2)])
+a1 <- combined_genos[,seq(1,ncol(combined_genos), by = 2)]
+a2 <- combined_genos[,seq(2,ncol(combined_genos), by = 2)]
+combined_genos <- paste0(a1, a2)
+combined_genos <- gsub("0", "A", combined_genos)
+combined_genos <- gsub("1", "C", combined_genos)
+combined_genos <- gsub("2", "G", combined_genos)
+combined_genos <- gsub("3", "3", combined_genos)
+
+combined_genos <- as.data.frame(matrix(combined_genos, nrow = nrow(genos)))
+
+d <- import.snpR.data(combined_genos, snp.meta = genos[,1:2], sample.meta = meta)
+
+# which have bad genotype_counts
+df <- filter_snps(d, mgc = 5) # nothing removed so no need to go further with this filter. Makes sense given our 0.05 maf during calling
+```
+
+Fetch Positions
+```{r}
+
+positions <- genos$id
+positions <- as.numeric(gsub(".+_", "", positions))
+# karst_snps <- which(positions >= 444283  & positions <= 503399)
+# genos <- genos[karst_snps,]
+
+```
+
+## add in colony info and prep for models
+```{r}
+hap_meta <- meta[rep(1:nrow(meta), each = 2),]
+
+# add in colony info
+families <- read.table("../data/sample_metadata_v4.txt", header = T, stringsAsFactors = F)
+fam_info <- sample.meta(readRDS("../colony/colony_R_outputs.RDS")$col_res$x)
+fam_info$MotherID <- as.numeric(gsub("#", "", fam_info$MotherID))
+fam_info$MotherID <- factor(fam_info$MotherID, levels = 1:max(fam_info$MotherID))
+families$MotherID <- fam_info$MotherID[match(families$SampleID, fam_info$SampleID)] 
+fam_info$FatherID <- as.numeric(gsub("\\*", "", fam_info$FatherID))
+fam_info$FatherID <- factor(fam_info$FatherID, levels = 1:max(fam_info$FatherID))
+families$FatherID <- fam_info$FatherID[match(families$SampleID, fam_info$SampleID)] 
+families$cluster <- fam_info$ClusterIndex[match(families$SampleID, fam_info$SampleID)] 
+
+# mod_data <- hap_meta[pop == "AUS",]
+# mod_data[,Index := gsub("TGCAG\\..+", "", gsub(".+_GG", "", barcode))]
+# colnames(mod_data)[which(colnames(mod_data) == "cluster")] <- "Haplotype"
+# mod_data <- merge(mod_data, families, by = c("Index", "Plate", "quant_pheno"),  sort = FALSE)
+# 
+# mod1 <- lmerTest::lmer(quant_pheno ~ as.factor(Haplotype) + (1|cluster), mod_data)
+# mod2 <- lmerTest::lmer(quant_pheno ~ (1|cluster), mod_data)
+# summary(mod1)
+# anova(mod1, mod2)
+
+```
+
+get only the largest effect loci, construct models
+```{r}
+
+# pull in asso data
+chr_key <- fread("../data/chr_info.tsv")
+chr_key$Chr_ID <- chr_key$`Chromosome name`
+chr_key$Chr_ID <- make.unique(chr_key$Chr_ID)
+chr_key$partID <- as.numeric(gsub(".+\\.", "", chr_key$Chr_ID))
+chr_key$partID[-grep("\\.", chr_key$Chr_ID)] <- 0
+chr_key <- dplyr::arrange(chr_key, as.numeric(`Chromosome name`), partID)
+adat_quant <- data.table::fread("../scripts/association/association_out_quant_cov.lrt0.gz", header = T)
+adat_quant$chr <- chr_key$Chr_ID[match(adat_quant$Chromosome, chr_key$`RefSeq seq accession`)]
+adat_quant[grep("Un", chr), chr := "Other"]
+adat_quant$pval <- pchisq(adat_quant$LRT, 1, lower.tail = FALSE)
+adat_quant$lpval <- -log(adat_quant$pval)
+adat_quant$fdr <- p.adjust(adat_quant$pval, "fdr")
+adat_quant <- dplyr::arrange(adat_quant, pval)
+adat_quant <- adat_quant[chr == 29 & fdr <= 0.05,]
+
+
+# positions
+top_loci <- which(positions %in% adat_quant$Position)
+
+top_loci <- t(genos[top_loci,-c(1:2)])
+tl_pos <- positions[which(positions %in% adat_quant$Position)]
+top_loci <- as.data.table(cbind(hap_meta, top_loci))
+## change to either 1 or 2
+top_loci[,c("V1", "V2", "V3", "V4", "V5", "V6") := lapply(.SD, function(x) as.numeric(as.factor(x)) - 1), 
+         .SDcols = c('V1', 'V2', 'V3', 'V4', 'V5', 'V6')]
+
+# models
+top_loci <- merge(top_loci, families, by = c("Index", "Plate", "quant_pheno"),  sort = FALSE, all.x = TRUE)
+colnames(top_loci)[which(colnames(top_loci) %in% paste0("V", 1:6))] <- paste0("SNP", 1:6)
+mod1L <- lmerTest::lmer(quant_pheno ~ SNP1 + SNP2 + SNP3 + SNP4 + SNP5 + SNP6 + (1|FatherID) + (1|MotherID), top_loci[pop == "AUS",]) # note, nearly perfect linkage so most vars are dropped!
+mod2L <- lmerTest::lmer(quant_pheno ~ (1|FatherID) + (1|MotherID), top_loci[pop == "AUS",])
+summary(mod1L)
+anova(mod1L, mod2L)
+
+# flip such that "1" is the "migratory" allele
+for(i in 1:6){
+  var <- paste0("SNP", i)
+  form <- formula(paste0("quant_pheno ~ ", var, "+ (1|FatherID) + (1|MotherID)"))
+  tm <- summary(lmerTest::lmer(form, top_loci[pop == "AUS",]))$coefficients[2,1]
+  if(tm > 0){
+    top_loci[[var]] <- ifelse(top_loci[,..var] == 0, 1, 0)
+  }
+}
+
+# model as inds
+top_loci_genos <- top_loci[seq(1, nrow(top_loci), by = 2),]
+top_loci_genos <- cbind(top_loci_genos[,c(1:7, 14:24)], 
+                        top_loci_genos[,.(SNP1, SNP2, SNP3, SNP4, SNP5, SNP6)] + 
+                          top_loci[seq(2, nrow(top_loci), by = 2),.(SNP1, SNP2, SNP3, SNP4, SNP5, SNP6)])
+
+mod1L <- lmerTest::lmer(quant_pheno ~ SNP1 + SNP2 + SNP3 + SNP4 + SNP5 + SNP6 + (1|FatherID) + (1|MotherID), 
+                        top_loci_genos[pop == "AUS",]) # note, nearly perfect linkage so most vars are dropped!
+mod2L <- lmerTest::lmer(quant_pheno ~ (1|FatherID) + (1|MotherID), top_loci_genos[pop == "AUS",])
+summary(mod1L)
+anova(mod1L, mod2L)
+MuMIn::r.squaredGLMM(mod1L) # explains roughly 14% of the variation in diapause development
+
+
+
+mafs <- top_loci[,lapply(.SD, mean), .SDcols =  paste0("SNP", 1:6), by = pop]
+mafsm <- data.table::melt(mafs, id.vars = "pop", variable.name = "SNP", value.name = "Frequency")
+# top_locim <- data.table::melt(top_loci, id.vars = colnames(top_loci)[-which(colnames(top_loci) %in% paste0("SNP", 1:6))])
+
+mafsm[,pop_cat := ifelse(pop == "NAM", "North America",
+                        ifelse(pop %in% c("QLD", "NSW", "AUS"), "Australia", 
+                               ifelse(pop == "HAW", "Hawaii", "Pacific")))]
+
+maf_plot <- ggplot(mafsm, aes(x = pop_cat, y = Frequency, color = pop_cat)) + 
+  geom_jitter(height = 0, width = .1) +
+  facet_wrap(~SNP) +
+  theme_bw() +
+  khroma::scale_color_bright()
+maf_plot # note, strongest asso is SNP1
+
+```
+
+## plot top SNPs on a map
+Producing Figure 4
+```{r}
+world <- ne_countries(scale = 'small', returnclass = 'sf')
+
+polygon <- st_polygon(x = list(rbind(c(-0.0001, 90),
+                                     c(0, 90),
+                                     c(0, -90),
+                                     c(-0.0001, -90),
+                                     c(-0.0001, 90)))) |>
+  st_sfc() |>
+  st_set_crs(4326)
+
+sf::sf_use_s2(FALSE)
+
+
+world <- world |> st_difference(polygon)
+
+world_robin <- st_transform(world, crs = '+proj=robin +lon_0=180 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs')
+
+sf::sf_use_s2(TRUE)
+
+# prep the points for plotting
+NAM <- geosphere::geomean(matrix(c(c(-100.289503, 19.556050), c(-121.930681, 36.625980)), 2, 2, byrow = TRUE))
+lat_long <- list(NAM = rev(NAM),
+                 HAW = c(20.9997, -155.6581),
+                 GUA = c(11.421207, 142.736584),
+                 ROT = c(14.154628, 145.191535), SAI = c(17.201243, 147.750705),
+                 SAM = c(-13.613179, -172.351278), FIJ = c(-17.924768, 178.081698),
+                 NCA = c(-21.299579, 165.383757), NOR = c(-29.024356, 167.945279),
+                 NSW = c(-32.751896, 151.667208),
+                 VIC = c(-34.574338, 138.689131), NZL = c(-37.124496, 174.961893),
+                 AUS = c(-27.540750, 152.906306))
+lat_long <- t(as.data.frame(lat_long))
+lat_long <- as.data.frame(lat_long)
+colnames(lat_long) <- c("lat", "long")
+lat_long$pop <- rownames(lat_long)
+lat_long <- sf::st_as_sf(lat_long, coords = c("long", "lat"))
+st_crs(lat_long) <- st_crs(rnaturalearth::ne_countries(scale = 'small', returnclass = 'sf'))
+lat_long <- st_transform(lat_long, st_crs(world_robin))
+
+cols <- c(paste0("SNP", 1:6), "pop")
+# mafsm_map <- data.table::melt(top_loci[,..cols], id.vars = "pop", variable.name = "SNP", value.name = "GT")
+# mafsm_map <- mafsm_map[,list(mean_frequency = mean(GT)), by = pop]
+# mafsm_map <- merge(lat_long, mafsm_map, by = "pop")
+mafsm_map <- data.table::melt(top_loci[,..cols], id.vars = "pop", variable.name = "SNP", value.name = "GT")
+mafsm_map <- mafsm_map[SNP == "SNP1",list(`Top SNP Frequency` = mean(GT)), by = pop]
+mafsm_map <- merge(lat_long, mafsm_map, by = "pop")
+
+# mafsm_map_means <- as.data.table(mafsm_map)
+# mafsm_map_means[,pop_cat := ifelse(pop == "NAM", "North America",
+#                         ifelse(pop %in% c("QLD", "NSW", "AUS"), "Australia", 
+#                                ifelse(pop == "HAW", "Hawaii", "Pacific")))]
+# inset <- ggplot(mafsm_map_means, aes(x = pop_cat, y = mean_frequency)) +
+#   geom_jitter(height = 0, width = .1, size = 3) +
+#   theme_bw() +
+#   khroma::scale_color_bright() +
+#   xlab("Area") +
+#   ylab("Mean Frequency")
+
+mafsm[,Area := ifelse(pop == "NAM", "North America",
+                      ifelse(pop %in% c("QLD", "NSW", "AUS"), "Australia", 
+                             ifelse(pop == "HAW", "Hawaii", "Other Pacific")))]
+
+tsizes <- c(14, 16, 22)
+PanelB <- ggplot(mafsm, aes(x = Area, y = Frequency, color = Area)) + 
+  geom_jitter(height = 0, width = .1, size = 4) +
+  facet_grid(~SNP,) +
+  theme_bw() +
+  scale_color_manual(values = c("#eb612e", "#dec079", "#393e42", "#809a54")) +
+  xlab("Area") + ylab("Diapause Allele Frequency") +
+  theme(axis.text = element_text(size = tsizes[1]),
+        axis.title = element_text(size = tsizes[2]),
+        axis.text.x = element_blank(),
+        strip.text = element_text(size = tsizes[1]), 
+        strip.background = element_blank(),
+        legend.title = element_text(size = tsizes[2]),
+        legend.text = element_text(size = tsizes[1]),
+        axis.ticks.x = element_blank(),
+        plot.title = element_text(size = tsizes[3])) +
+  ggtitle("B")
+
+PanelA <- ggplot() +
+  geom_sf(data = world_robin, fill = "lightgray")  + #background color for land
+  geom_sf(data = mafsm_map, aes(color = `Top SNP Frequency`), size = 8) +
+  # geom_sf(data = mafsm_map[mafsm_map$mean_frequency == 0,], size = 4, color = "black") +
+  geom_sf(data = mafsm_map[mafsm_map$`Top SNP Frequency` == 0,], size = 8, color = "darkred", shape = 13) +
+  khroma::scale_color_lajolla() + 
+  coord_sf(xlim = c(-70e5, 100e5),
+           ylim = c(-60e5, 58e5)) +
+  theme_bw() +
+  annotation_scale(text_cex = 1.5, bar_cols = c("#eb612e", "#dec079"), text_family = "serif", text_col = "#393e42", pad_y = unit(0.5, "cm")) +
+  theme(axis.text = element_text(size = tsizes[1], color = "#393e42"),
+        axis.title = element_text(size = tsizes[2]),
+        panel.grid = element_line(color = "gray"),
+        legend.title = element_text(size = tsizes[2]),
+        legend.text = element_text(size = tsizes[1] - 6),
+        plot.title = element_text(size = tsizes[3])) +
+  annotation_north_arrow(style = north_arrow_fancy_orienteering(text_size = tsizes[1],
+                                                                text_col = "#393e42",
+                                                                text_family = "serif",
+                                                                fill = c("#eb612e", "#dec079"),
+                                                                line_col = "#393e42"),
+                         location = "bl",
+                         pad_y = grid::unit(.06, "native")) +
+  ggtitle("A")
+
+Figure4 <- plot_grid(PanelA, PanelB, ncol = 1, align = "vh", axis = "lr", rel_heights = c(1, .5))
+save_plot("../paper/Figure4.pdf", Figure4, base_width = 13, base_height = 11)
+
+```
+

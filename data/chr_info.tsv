@@ -1,0 +1,67 @@
+Assembly Accession	Assembly Unplaced Count	Assembly-unit accession	Chromosome name	GC Count	GC Percent	GenBank seq accession	Molecule type	Ordering	RefSeq seq accession	Role	Seq length	UCSC style name	Unlocalized Count
+GCF_018135715.1		Primary Assembly	2	3300862	32.5	CM030908.1	Chromosome		NC_083537.1	assembled-molecule	10098950		
+GCF_018135715.1		Primary Assembly	4	2918691	32	CM030909.1	Chromosome		NC_083538.1	assembled-molecule	9131010		
+GCF_018135715.1		Primary Assembly	5	2851837	31.5	CM030910.1	Chromosome		NC_083539.1	assembled-molecule	9019870		
+GCF_018135715.1		Primary Assembly	6	3306123	32	CM030911.1	Chromosome		NC_083540.1	assembled-molecule	10309481		
+GCF_018135715.1		Primary Assembly	7	2528179	31.5	CM030912.1	Chromosome		NC_083541.1	assembled-molecule	8067864		
+GCF_018135715.1		Primary Assembly	8	3255338	31.5	CM030913.1	Chromosome		NC_083542.1	assembled-molecule	10301214		
+GCF_018135715.1		Primary Assembly	10	2928568	31	CM030914.1	Chromosome		NC_083543.1	assembled-molecule	9427843		
+GCF_018135715.1		Primary Assembly	11	3008676	31	CM030915.1	Chromosome		NC_083544.1	assembled-molecule	9638922		
+GCF_018135715.1		Primary Assembly	12	2620762	32	CM030916.1	Chromosome		NC_083545.1	assembled-molecule	8158176		
+GCF_018135715.1		Primary Assembly	14	2651062	31.5	CM030917.1	Chromosome		NC_083546.1	assembled-molecule	8429815		
+GCF_018135715.1		Primary Assembly	15	3070003	32	CM030918.1	Chromosome		NC_083547.1	assembled-molecule	9645913		
+GCF_018135715.1		Primary Assembly	17	3229685	32.5	CM030919.1	Chromosome		NC_083548.1	assembled-molecule	9976722		
+GCF_018135715.1		Primary Assembly	19	2845382	31.5	CM030920.1	Chromosome		NC_083549.1	assembled-molecule	8977435		
+GCF_018135715.1		Primary Assembly	20	2237036	32	CM030921.1	Chromosome		NC_083550.1	assembled-molecule	6958931		
+GCF_018135715.1		Primary Assembly	23	1954243	31	CM030922.1	Chromosome		NC_083551.1	assembled-molecule	6260409		
+GCF_018135715.1		Primary Assembly	24	1639371	32.5	CM030923.1	Chromosome		NC_083552.1	assembled-molecule	5062886		
+GCF_018135715.1		Primary Assembly	25	1956801	32.5	CM030924.1	Chromosome		NC_083553.1	assembled-molecule	6018111		
+GCF_018135715.1		Primary Assembly	26	2095763	31.5	CM030925.1	Chromosome		NC_083554.1	assembled-molecule	6627312		
+GCF_018135715.1		Primary Assembly	27	1606004	31.5	CM030926.1	Chromosome		NC_083555.1	assembled-molecule	5088227		
+GCF_018135715.1		Primary Assembly	28	1224444	33.5	CM030927.1	Chromosome		NC_083556.1	assembled-molecule	3665469		
+GCF_018135715.1		Primary Assembly	30	1201991	34.5	CM030928.1	Chromosome		NC_083557.1	assembled-molecule	3498347		
+GCF_018135715.1		Primary Assembly	31	1007196	35.5	CM030929.1	Chromosome		NC_083558.1	assembled-molecule	2838588		
+GCF_018135715.1		Primary Assembly	Z	5202480	32	CM030930.1	Chromosome		NC_083559.1	assembled-molecule	16343425		
+GCF_018135715.1		Primary Assembly	3			JAEQBL010000025.1	Chromosome		NW_026869846.1	unlocalized-scaffold	2629375		3
+GCF_018135715.1		Primary Assembly	3			JAEQBL010000028.1	Chromosome		NW_026869844.1	unlocalized-scaffold	4527854		3
+GCF_018135715.1		Primary Assembly	3			JAEQBL010000037.1	Chromosome		NW_026869845.1	unlocalized-scaffold	3346667		3
+GCF_018135715.1		Primary Assembly	9			JAEQBL010000003.1	Chromosome		NW_026869847.1	unlocalized-scaffold	4968230		2
+GCF_018135715.1		Primary Assembly	9			JAEQBL010000004.1	Chromosome		NW_026869848.1	unlocalized-scaffold	4409443		2
+GCF_018135715.1		Primary Assembly	13			JAEQBL010000005.1	Chromosome		NW_026869849.1	unlocalized-scaffold	7664426		2
+GCF_018135715.1		Primary Assembly	13			JAEQBL010000039.1	Chromosome		NW_026869850.1	unlocalized-scaffold	843341		2
+GCF_018135715.1		Primary Assembly	16			JAEQBL010000026.1	Chromosome		NW_026869852.1	unlocalized-scaffold	3269702		2
+GCF_018135715.1		Primary Assembly	16			JAEQBL010000035.1	Chromosome		NW_026869851.1	unlocalized-scaffold	4997668		2
+GCF_018135715.1		Primary Assembly	18			JAEQBL010000001.1	Chromosome		NW_026869854.1	unlocalized-scaffold	2321143		2
+GCF_018135715.1		Primary Assembly	18			JAEQBL010000002.1	Chromosome		NW_026869853.1	unlocalized-scaffold	5442852		2
+GCF_018135715.1		Primary Assembly	22			JAEQBL010000021.1	Chromosome		NW_026869855.1	unlocalized-scaffold	3866676		2
+GCF_018135715.1		Primary Assembly	22			JAEQBL010000023.1	Chromosome		NW_026869856.1	unlocalized-scaffold	2769542		2
+GCF_018135715.1		Primary Assembly	29			JAEQBL010000032.1	Chromosome		NW_026869857.1	unlocalized-scaffold	2012871		2
+GCF_018135715.1		Primary Assembly	29			JAEQBL010000033.1	Chromosome		NW_026869858.1	unlocalized-scaffold	1759534		2
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000045.1	Chromosome		NW_026869859.1	unplaced-scaffold	1293630		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000038.1	Chromosome		NW_026869860.1	unplaced-scaffold	1138098		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000040.1	Chromosome		NW_026869861.1	unplaced-scaffold	588437		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000041.1	Chromosome		NW_026869862.1	unplaced-scaffold	584512		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000042.1	Chromosome		NW_026869863.1	unplaced-scaffold	523262		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000043.1	Chromosome		NW_026869864.1	unplaced-scaffold	312611		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000046.1	Chromosome		NW_026869865.1	unplaced-scaffold	233038		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000047.1	Chromosome		NW_026869866.1	unplaced-scaffold	232267		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000062.1	Chromosome		NW_026869867.1	unplaced-scaffold	213662		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000048.1	Chromosome		NW_026869868.1	unplaced-scaffold	199599		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000063.1	Chromosome		NW_026869869.1	unplaced-scaffold	176328		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000049.1	Chromosome		NW_026869870.1	unplaced-scaffold	148502		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000050.1	Chromosome		NW_026869871.1	unplaced-scaffold	144262		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000044.1	Chromosome		NW_026869872.1	unplaced-scaffold	143125		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000051.1	Chromosome		NW_026869873.1	unplaced-scaffold	131400		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000064.1	Chromosome		NW_026869874.1	unplaced-scaffold	130797		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000052.1	Chromosome		NW_026869875.1	unplaced-scaffold	124315		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000053.1	Chromosome		NW_026869876.1	unplaced-scaffold	117325		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000054.1	Chromosome		NW_026869877.1	unplaced-scaffold	93888		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000055.1	Chromosome		NW_026869878.1	unplaced-scaffold	91194		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000065.1	Chromosome		NW_026869879.1	unplaced-scaffold	73475		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000056.1	Chromosome		NW_026869880.1	unplaced-scaffold	42057		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000057.1	Chromosome		NW_026869881.1	unplaced-scaffold	35966		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000058.1	Chromosome		NW_026869882.1	unplaced-scaffold	10964		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000059.1	Chromosome		NW_026869883.1	unplaced-scaffold	6297		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000060.1	Chromosome		NW_026869884.1	unplaced-scaffold	3601		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000066.1	Chromosome		NW_026869885.1	unplaced-scaffold	3517		
+GCF_018135715.1		Primary Assembly	Un			JAEQBL010000061.1	Chromosome		NW_026869886.1	unplaced-scaffold	3129		
